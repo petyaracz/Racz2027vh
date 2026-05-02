@@ -1,0 +1,150 @@
+---
+title: "KRR on vowel harmony"
+output: html_document
+date: "2026-04-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# -- head -- #
+
+setwd('~/Github/Racz2027vh/')
+library(tidyverse)
+library(krr)
+
+# -- fun -- #
+
+transcribeIPA = function(dat){dat |> stringr::str_replace_all(c('x' = 'ks', 'cs' = 'č', 'zs' = 'ž', 'ty' = 'ṯ', 'gy' = 'ḏ', 'ny' = 'ṉ', 'sz' = 'ß', 's' = 'š', 'ß' = 's', 'ck' = 'kk', 'codec' = 'kodek', 'ch' = 'h', 'ly' = 'j'))}
+
+# -- read -- #
+
+train = read_tsv('dat/dzsungel.tsv')
+test_non = read_tsv('dat/unfiltered_data_nonword.tsv') # !!!
+test_real = read_tsv('dat/filtered_data_real_word.tsv')
+
+```
+
+## running janet (done)
+
+```{r janet, eval = F}
+
+library(janet)
+
+# Read your phonological feature matrix (segment col + binary feature cols)
+features <- read.delim("dat/siptar_torkenczy_toth_racz_hungarian.tsv", na.strings = "")
+
+# Supply a character vector of words
+# words <- readLines("words.txt")
+raw = c(unique(test_non$target),unique(train$stem))
+words = transcribeIPA(raw)
+
+# Run the full pipeline
+result <- run_janet(features, words, gap_penalty = 1.0)
+
+# look at all this fancy information stored in result
+result
+
+write_tsv(result$word_distances, 'dat/word_distances.tsv.gz')
+```
+
+## reading in dist
+
+```{r dist}
+
+dist = read_tsv('dat/word_distances.tsv.gz')
+
+```
+
+Training data from [here](https://github.com/petyaracz/RaczRebrus2024) (see [here](https://www.degruyterbrill.com/document/doi/10.1515/cllt-2024-0021)). Nonword test data from [here](https://github.com/petyaracz/Racz2024) (see [here](https://onlinelibrary.wiley.com/doi/full/10.1111/cogs.13483)). Real word test data from [here])(https://github.com/petyaracz/RaczRebrus2024cont) (rn unpublished).
+
+```{r wiggle}
+
+train = train |> 
+  mutate(
+    transcribed = transcribeIPA(stem)
+  )
+
+test_non = test_non |>
+  count(target,accept) |> 
+  pivot_wider(names_from = accept, values_from = n, values_fill = 0) |> 
+  mutate(
+    transcribed = transcribeIPA(target),
+    log_odds_back = log((`TRUE`+0.001)/(`FALSE`+0.001))
+      )
+
+test_real = test_real |> 
+  count(stem,accept) |> 
+  pivot_wider(names_from = accept, values_from = n, values_fill = 0) |> 
+  mutate(
+    transcribed = transcribeIPA(stem),
+    log_odds_back = log((`TRUE`+0.001)/(`FALSE`+0.001))
+      )
+
+```
+
+## model training
+
+```{r model_training}
+
+check_krr_inputs(train = train, dist = dist, word_col = 'transcribed', outcome_col = 'p_back')
+
+# -- model -- #
+
+# Train KRR with LOO hyperparameter tuning on corpus data.
+# link = "logit" transforms probabilities to log-odds before fitting and
+# back-transforms predictions; criterion = "rmse" selects the (sigma, alpha)
+# pair with the lowest LOO root-mean-squared error in the transformed space.
+m = train_krr(train, dist, word_col = "transcribed", outcome_col = "log_odds_back", link = "identity", criterion = 'rmse')
+m$sigma   # best sigma
+m$alpha   # best alpha
+m$best_score # logit: 2.28 # identity: 2.39
+
+train2 = m$predictions
+
+```
+
+## real words
+
+```{r model_test_real}
+# existing words. this is just a look-up
+test_real2 = inner_join(train2,test_real)
+
+```
+
+```{r check_test_real}
+
+test_real2 |> 
+  ggplot(aes(predicted_loo,observed)) +
+  geom_point()
+
+test_real2 |> 
+  ggplot(aes(observed,log_odds_back)) +
+  geom_point()
+
+test_real2 |> 
+  ggplot(aes(predicted_loo,log_odds_back)) +
+  geom_point()
+
+with(test_real2, cor.test(predicted_loo,log_odds_back))
+with(test_real2, cor.test(predicted_loo,observed))
+
+```
+
+# nonwords
+
+```{r model_test_non}
+
+preds = predict_krr(train_data = train, test_data = test_non, dist_df = dist, word_col = "transcribed", outcome_col = "log_odds_back",
+                     sigma = m$sigma, alpha = m$alpha, link = "identity")
+```
+
+```{r check_test_non}
+
+preds |> 
+  ggplot(aes(predicted,observed)) +
+  geom_point()
+
+with(preds, cor.test(predicted,observed))
+
+```

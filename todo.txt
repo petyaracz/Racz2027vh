@@ -1,0 +1,3 @@
+rewrite generate_non_words so it uses bizalmas/muvelt word endings and generates a balanced data set of ?? words per ending
+
+note: 25 real words per category x 2 in real word exp (so 25 kodex, 25 haver, both with dat and pl, 100 trials)
