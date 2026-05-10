@@ -20,8 +20,12 @@ transcribeIPA = function(dat){dat |> stringr::str_replace_all(c('x' = 'ks', 'cs'
 # -- read -- #
 
 train = read_tsv('dat/dzsungel.tsv')
-test_non = read_tsv('dat/unfiltered_data_nonword.tsv') # !!!
+test_non = read_tsv('dat/filtered_data_nonword.tsv')
 test_real = read_tsv('dat/filtered_data_real_word.tsv')
+
+# counts
+length(unique(test_non$id))
+length(unique(test_real$id))
 
 ```
 
@@ -65,19 +69,27 @@ train = train |>
     transcribed = transcribeIPA(stem)
   )
 
-test_non = test_non |>
-  count(target,accept) |> 
+test_real = test_real |> 
+  mutate(
+    transcribed = transcribeIPA(stem)
+  )
+
+test_non = test_non |> 
+  mutate(
+    transcribed = transcribeIPA(target)
+  )
+
+test_real2 = test_real |> 
+  count(transcribed,accept) |> 
   pivot_wider(names_from = accept, values_from = n, values_fill = 0) |> 
   mutate(
-    transcribed = transcribeIPA(target),
     log_odds_back = log((`TRUE`+0.001)/(`FALSE`+0.001))
       )
 
-test_real = test_real |> 
-  count(stem,accept) |> 
+test_non2 = test_non |>
+  count(transcribed,accept) |> 
   pivot_wider(names_from = accept, values_from = n, values_fill = 0) |> 
   mutate(
-    transcribed = transcribeIPA(stem),
     log_odds_back = log((`TRUE`+0.001)/(`FALSE`+0.001))
       )
 
@@ -108,26 +120,26 @@ train2 = m$predictions
 
 ```{r model_test_real}
 # existing words. this is just a look-up
-test_real2 = inner_join(train2,test_real)
+test_real3 = inner_join(train2,test_real2)
 
 ```
 
 ```{r check_test_real}
 
-test_real2 |> 
+test_real3 |> 
   ggplot(aes(predicted_loo,observed)) +
   geom_point()
 
-test_real2 |> 
+test_real3 |> 
   ggplot(aes(observed,log_odds_back)) +
   geom_point()
 
-test_real2 |> 
+test_real3 |> 
   ggplot(aes(predicted_loo,log_odds_back)) +
   geom_point()
 
-with(test_real2, cor.test(predicted_loo,log_odds_back))
-with(test_real2, cor.test(predicted_loo,observed))
+with(test_real3, cor.test(predicted_loo,log_odds_back))
+with(test_real3, cor.test(predicted_loo,observed))
 
 ```
 
@@ -135,7 +147,7 @@ with(test_real2, cor.test(predicted_loo,observed))
 
 ```{r model_test_non}
 
-preds = predict_krr(train_data = train, test_data = test_non, dist_df = dist, word_col = "transcribed", outcome_col = "log_odds_back",
+preds = predict_krr(train_data = train, test_data = test_non2, dist_df = dist, word_col = "transcribed", outcome_col = "log_odds_back",
                      sigma = m$sigma, alpha = m$alpha, link = "identity")
 ```
 
@@ -147,4 +159,75 @@ preds |>
 
 with(preds, cor.test(predicted,observed))
 
+```
+
+```{r setup_properly}
+
+test_real_min = test_real3 |> 
+  select(transcribed,predicted_loo)
+
+test_non_min = preds |> 
+  select(transcribed,predicted)
+
+test_real4 = test_real |> 
+  left_join(test_real_min) |> 
+  mutate(
+    pred = predicted_loo,
+    type = 'real'
+  ) |> 
+  select(accept,id,transcribed,pred,type)
+
+test_non4 = test_non |> 
+  left_join(test_non_min) |> 
+  mutate(
+    pred = predicted,
+    type = 'nonword'
+  ) |> 
+  select(accept,id,transcribed,pred,type)
+
+tests = bind_rows(test_real4,test_non4) |> 
+  mutate(accept = as.double(accept)) |> 
+  filter(!is.na(accept),!is.na(pred)) # ahem
+
+```
+
+```{r model_properly}
+library(glmmTMB)
+library(broom.mixed)
+library(performance)
+library(sjPlot)
+library(emmeans)
+
+fit1 = glmmTMB(
+  accept ~ pred * type + (1|id) + (1|transcribed),
+  family = binomial,
+  data = tests
+)
+
+fit2 = glmmTMB(
+  accept ~ pred * type + (1+pred|id) + (1|transcribed),
+  family = binomial,
+  data = tests
+)
+
+compare_performance(fit1,fit2,metrics = 'common')
+summary(fit2)
+tidy(fit2)
+check_model(fit2)
+plot_model(fit2, 'pred', terms = c('pred', 'type'))
+
+emmeans(fit2, ~ type, type = "response", level = .95)
+r2(fit2)
+
+# Get contribution of pred only (marginal over random effects)
+tests$fitted_pred_only = predict(fit2, re.form = NA, type = "response")
+
+tests |> 
+  group_by(type) |> 
+  summarise(
+    r2_pred_marginal = cor(fitted_pred_only, accept)^2,
+    n = n()
+  )
+
+# a lot of variation is eaten by the random effects, which is entirely a hell of my own making
 ```

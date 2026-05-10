@@ -82,10 +82,30 @@ unfilt = d |>
   relocate(lower_time, .after = rt) |> 
   relocate(upper_time, .after = rt)
 
+glue('{length(unique(unfilt$id))} participants in total')
+
 keep_ids = unfilt |> 
   count(id,accept) |> 
   filter(accept) |> 
   pull(id)
+
+glue('{length(unique(keep_ids))} participants who accepted anything')
+
+# unfilt |> 
+#   distinct(id,total_time) |> 
+#   ggplot(aes(total_time)) +
+#   geom_histogram()
+
+weird_ids = unfilt |> 
+  distinct(id,total_time) |> 
+  filter(total_time > 1000000) |> 
+  pull(id)
+
+unfilt |> 
+  filter(id %in% weird_ids) |> 
+  ggplot(aes(i,rt)) +
+  geom_point() +
+  facet_wrap( ~ id)
 
 filt = unfilt |> 
   filter(
