@@ -107,11 +107,16 @@ unfilt |>
   geom_point() +
   facet_wrap( ~ id)
 
+unfilt |> 
+  ggplot(aes(i,rt)) +
+  geom_point() +
+  geom_hline(aes(yintercept = 4000))
+
 filt = unfilt |> 
   filter(
     total_time > lower_time,
     total_time < upper_time,
-    rt < 4000,
+    # rt < 4000, # too serious and also I feel like some participants walked away from the screen and got very long RTs and the part-level filter should do away with them
     id %in% keep_ids
   )
 
@@ -119,3 +124,5 @@ filt = unfilt |>
 
 write_tsv(unfilt, 'dat/unfiltered_data_nonword.tsv')
 write_tsv(filt, 'dat/filtered_data_nonword.tsv')
+
+glue('{length(unique(filt$id))} participants remain')
