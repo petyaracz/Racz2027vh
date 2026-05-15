@@ -3,12 +3,30 @@
 set.seed(1337)
 setwd('~/Github/Racz2027vh/')
 library(tidyverse)
+library(glmmTMB)
+library(performance)
+library(sjPlot)
 
 # -- read -- #
 
 real_phon = read_tsv('dat/real_words_phon_preds.tsv')
 nonwords_phon = read_tsv('dat/nonwords_phon_preds.tsv')
 real_sem = read_tsv('dat/real_words_semantic_preds.tsv')
+trials_real_words = read_tsv('dat/filtered_data_real_word.tsv')
+
+# -- glm setup -- #
+
+real_phon_b = real_phon |> 
+  select(stem,back,front,predicted_loo) |> 
+  rename(phonological_model = predicted_loo)
+
+real_sem_b = real_sem |> 
+  select(stem,predicted_loo) |> 
+  rename(semantic_model = predicted_loo)
+
+real_combined = inner_join(real_phon_b,real_sem_b)
+
+trials_real_words_combined = left_join(trials_real_words,real_combined)
 
 # -- lang cats -- #
 
@@ -149,3 +167,61 @@ ggsave('viz/obs_pred_nonwords_phon.png', dpi = 900, width = 6.5, height = 4.5)
 with(real_phon, cor.test(predicted_loo, log_odds_back))
 with(real_sem, cor.test(predicted_loo, log_odds_back))
 with(nonwords_phon, cor.test(predicted, log_odds_back))
+
+# -- glm, corpus -- #
+
+fit1 = glmmTMB(
+  cbind(back,front) ~ phonological_model + semantic_model,
+  family = binomial,
+  data = real_combined
+)
+
+fit2 = glmmTMB(
+  cbind(back,front) ~ phonological_model,
+  family = binomial,
+  data = real_combined
+)
+
+fit3 = glmmTMB(
+  cbind(back,front) ~ semantic_model,
+  family = binomial,
+  data = real_combined
+)
+
+compare_performance(fit1,fit2,fit3,metrics = 'common')
+test_performance(fit1,fit2)
+test_performance(fit1,fit3)
+test_performance(fit2,fit3)
+
+# -- glm, exp -- #
+
+trials_real_words_combined$accept = as.double(trials_real_words_combined$accept)
+
+fit4 = glmmTMB(
+  accept ~ phonological_model + semantic_model + (1|id) + (1|target),
+  family = binomial,
+  data = trials_real_words_combined
+)
+
+fit5 = glmmTMB(
+  accept ~ phonological_model + (1|id) + (1|target),
+  family = binomial,
+  data = trials_real_words_combined
+)
+
+fit6 = glmmTMB(
+  accept ~ semantic_model + (1|id) + (1|target),
+  family = binomial,
+  data = trials_real_words_combined
+)
+
+compare_performance(fit4,fit5,fit6,metrics = 'common')
+test_performance(fit4,fit5)
+test_performance(fit4,fit6)
+test_performance(fit5,fit6)
+
+plot_model(fit1, 'pred')
+plot_model(fit4, 'pred')
+
+summary(fit1)
+summary(fit4)
