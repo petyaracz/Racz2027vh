@@ -1,2 +1,0 @@
-semantic vectors
-triangle for real words
