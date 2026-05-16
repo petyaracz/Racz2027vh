@@ -125,4 +125,4 @@ filt = unfilt |>
 write_tsv(unfilt, 'dat/unfiltered_data_nonword.tsv')
 write_tsv(filt, 'dat/filtered_data_nonword.tsv')
 
-glue('{length(unique(filt$id))} participants remain (23 participants in real-word exp)')
+glue('{length(unique(filt$id))} participants remain (25 participants in real-word exp)')
