@@ -76,7 +76,7 @@ etym |>
   scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.01,0.1,0.5,0.9,0.99), name = 'p(fotelnak)'), limits = c(-8,6), name = 'log (fotelnak / fotelnek)', breaks = c(-5:5)) +
   theme_few()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 7, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 5, height = 4)
 
 ## phono mds
 
@@ -103,7 +103,7 @@ real_phon |>
   ) +
   theme_bw()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 7, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 5, height = 4)
 
 # real words: phonological MDS coloured by corpus log odds
 real_sem |>
@@ -125,7 +125,7 @@ real_sem |>
   ) +
   theme_bw()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 7, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 5, height = 4)
 
 ## krr
 
@@ -174,12 +174,12 @@ p2 = real_sem |>
 
 p1 + p2 + plot_layout(guides = 'collect')
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_krr.png', dpi = 900, width = 12, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_krr.png', dpi = 900, width = 8, height = 4)
 
 ## nonwords
 
 real_phon_2 = real_phon |> 
-  select(stem,language2,phonological_x,phonological_y,log_odds_back,predicted_loo) |> 
+  select(stem,phonological_x,phonological_y,log_odds_back,predicted_loo) |> 
   rename(predicted = predicted_loo) |> 
   mutate(type = 'létező szó')
 
@@ -210,7 +210,7 @@ nonwords_3 |>
   scale_colour_grey() +
   theme_bw()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_mds.png', dpi = 900, width = 7, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_mds.png', dpi = 900, width = 5, height = 4)
 
 nonwords_phon |>
   ggplot(aes(log_odds_back, predicted)) +
@@ -229,4 +229,4 @@ nonwords_phon |>
   ylab('várt log(fotelnak/fotelnek)') +
   ggtitle('alaktani hasonlóság\nlétező szavakhoz')
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_pred.png', dpi = 900, width = 6, height = 6)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_pred.png', dpi = 900, width = 4, height = 4)
