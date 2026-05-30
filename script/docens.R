@@ -42,6 +42,21 @@ trials_real_words = read_tsv('dat/unfiltered_data_real_word.tsv')
 trials_nonwords = read_tsv('dat/unfiltered_data_nonword.tsv')
 dist_phon = read_tsv('dat/word_distances.tsv.gz')
 dist_sem = read_tsv('dat/semantic_distances_ignore_colname.tsv')
+src = read_tsv('dat/master.tsv')
+
+# -- list -- #
+
+src |> 
+  mutate(
+    stem = str_remove(s0, 'Ez egy ') |> 
+           str_remove('\\.')
+         ) |> 
+  summarise(
+    stems = paste(stem, collapse = ', '),
+    .by = class
+  ) |> 
+  knitr::kable()
+  
 
 # -- fig -- #  
 
@@ -69,7 +84,7 @@ dist_phon |>
         ) +
   scale_fill_viridis_b() +
   guides(fill = 'none') +
-  ggtitle('alaktani távolságok')
+  ggtitle('alaki távolságok')
 
 ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist1.png', dpi = 900, width = 6, height = 5.5)
 
