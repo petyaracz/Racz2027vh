@@ -256,7 +256,7 @@ nonwords_3 |>
     fill = 'white'
   ) +
   labs(
-    title = 'MDS: alaktani távolságok',
+    title = 'MDS: alaki hasonlóság',
     x = 'MDS dim 1', y = 'MDS dim 2',
     fill = 'típus', colour = 'típus'
   ) +
@@ -278,7 +278,7 @@ nonwords_phon |>
     fill = 'lightgrey'
   ) +
   geom_smooth() +
-  theme_bw() +
+  theme_few() +
   xlab('megfigyelt e → a \nlog(fotelnak/fotelnek)') +
   ylab('várt e → a \nlog(fotelnak/fotelnek)') +
   ggtitle('alaktani hasonlóság\nlétező szavakhoz')
