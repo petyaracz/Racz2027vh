@@ -71,7 +71,7 @@ dist_phon |>
   guides(fill = 'none') +
   ggtitle('alaktani távolságok')
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist1.png', dpi = 900, width = 5, height = 5.5)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist1.png', dpi = 900, width = 6, height = 5.5)
 
 dist_sem |> 
   filter(
@@ -90,7 +90,7 @@ dist_sem |>
   guides(fill = 'none') +
   ggtitle('szemantikai távolságok')
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist2.png', dpi = 900, width = 5, height = 5.5)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist2.png', dpi = 900, width = 6, height = 5.5)
 
 ## dist
 
