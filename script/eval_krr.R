@@ -195,25 +195,32 @@ with(nonwords_phon, cor.test(predicted, log_odds_back))
 # -- glm, corpus -- #
 
 fit1 = glmmTMB(
-  cbind(back,front) ~ s_phonological_model + s_semantic_model,
+  cbind(back,front) ~ s_phonological_model + s_semantic_model + (1|stem),
   family = binomial,
   data = real_combined
 )
 
 fit2 = glmmTMB(
-  cbind(back,front) ~ s_phonological_model,
+  cbind(back,front) ~ s_phonological_model + (1|stem),
   family = binomial,
   data = real_combined
 )
 
 fit3 = glmmTMB(
-  cbind(back,front) ~ s_semantic_model,
+  cbind(back,front) ~ s_semantic_model + (1|stem),
   family = binomial,
   data = real_combined
 )
 
+
+MuMIn::r.squaredGLMM(fit1)
+MuMIn::r.squaredGLMM(fit2)
+MuMIn::r.squaredGLMM(fit3)
+
 compare_performance(fit1,fit2,fit3,metrics = 'common') |> 
-  arrange(AIC)
+  select(Name,AIC,BIC,RMSE) |> 
+  arrange(AIC) |> 
+  knitr::kable(digits = 3)
 test_performance(fit1,fit2)
 test_performance(fit1,fit3)
 test_performance(fit2,fit3)
@@ -239,6 +246,7 @@ fit6 = glmmTMB(
 )
 
 compare_performance(fit4,fit5,fit6,metrics = 'common') |> 
+  select(Name,AIC,BIC,R2_marginal,RMSE) |> 
   arrange(AIC)
 test_performance(fit4,fit5)
 test_performance(fit4,fit6)

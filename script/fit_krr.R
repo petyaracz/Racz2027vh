@@ -37,6 +37,18 @@ ph_dist = read_tsv('dat/word_distances.tsv.gz')
 s_dist = read_tsv('dat/semantic_distances_ignore_colname.tsv')
 etym = read_tsv('dat/stemlanguage.tsv')
 
+# -- write out participants for nonword exp (spring 2026) -- #
+
+# test_non |> 
+#   distinct(id) |> 
+#   rename(
+#     NEPTUN = id
+#   ) |> 
+#   mutate(
+#     kísérletező = 'Rácz'
+#   ) |> 
+#   googlesheets4::write_sheet('https://docs.google.com/spreadsheets/d/1BuncctyZDHVuRsLgpqDL-6PWP64vSU6_mp88YTaQjdM/edit?usp=sharing', 'Sheet1')
+
 # -- prepare nonwords -- #
 
 test_non = test_non |>

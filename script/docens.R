@@ -43,6 +43,31 @@ trials_nonwords = read_tsv('dat/unfiltered_data_nonword.tsv')
 
 # -- fig -- #  
 
+## dist
+
+# choose your fighter
+label_stems_1 = c("korvett", "kódex", "mutter", "haver") 
+
+real_phon |>
+  ggplot(aes(y = log_odds_back)) +
+  geom_histogram() +
+  geom_rug() +
+  geom_label(
+    data = real_phon |> filter(stem %in% label_stems_1),
+    aes(x = 0, label = stem),
+    hjust = -0.15,
+    vjust = -1.5,
+    size = 3,
+    fill = 'lightgrey'
+  ) +
+  coord_flip() +
+  xlab('') +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.01,0.1,0.5,0.9,0.99), name = 'e → a \np(fotelnak)'), limits = c(-8,6), name = 'log (fotelnak / fotelnek)', breaks = c(-5:5)) +
+  theme_few()
+
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_density.png', dpi = 900, width = 5, height = 4.5)
+
+
 ## etym
 
 etym = real_phon |> 
@@ -57,9 +82,6 @@ etym = real_phon |>
   mutate(origin = factor(origin, levels = c('yi','de','fr','la')) |> fct_rev()) |> 
   inner_join(real_phon)
 
-# choose your fighter
-label_stems_1 = c("korvett", "kódex", "mutter", "haver") 
-
 etym |>
   ggplot(aes(origin, log_odds_back)) +
   geom_rain() +
@@ -73,10 +95,10 @@ etym |>
   ) +
   coord_flip() +
   scale_x_discrete(name = 'forrásnyelv', labels = c('latin','francia','német','jiddis')) +
-  scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.01,0.1,0.5,0.9,0.99), name = 'p(fotelnak)'), limits = c(-8,6), name = 'log (fotelnak / fotelnek)', breaks = c(-5:5)) +
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.01,0.1,0.5,0.9,0.99), name = 'e → a \np(fotelnak)'), limits = c(-8,6), name = 'log (fotelnak / fotelnek)', breaks = c(-5:5)) +
   theme_few()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 5, height = 4)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 5, height = 4.5)
 
 ## phono mds
 
@@ -103,15 +125,46 @@ real_phon |>
   ) +
   theme_bw()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 5, height = 4)
+# this, but better
+real_phon = real_phon |>
+  mutate(
+    a_e = ifelse(log_odds_back > median(log_odds_back), 'inkább a', 'inkább e') |> fct_relevel('inkább e')
+         )
+
+real_phon |> 
+  ggplot(aes(x = phonological_x, y = phonological_y, fill = log_odds_back)) +
+  geom_point(shape = 21, size = 3, alpha = 0.8) +
+  scale_fill_gradient2(
+    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
+    name = ' e → a \nlog(fotelnak/fotelnek)'
+  ) +
+  geom_label(
+    data = real_phon |> filter(stem %in% label_stems_2),
+    aes(label = stem),
+    size = 3,
+    fill = 'lightgrey'
+  ) +
+  labs(
+    title = 'MDS: alaki távolságok',
+    x = 'MDS dim 1', y = 'MDS dim 2'
+  ) +
+  theme_bw() +
+  facet_wrap(~ a_e)
+
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 9, height = 5)
 
 # real words: phonological MDS coloured by corpus log odds
-real_sem |>
+real_sem = real_sem |>
+  mutate(
+    a_e = ifelse(log_odds_back > median(log_odds_back), 'inkább a', 'inkább e') |> fct_relevel('inkább e')
+  )
+  
+real_sem |> 
   ggplot(aes(x = semantic_x, y = semantic_y, fill = log_odds_back)) +
   geom_point(shape = 21, size = 3, alpha = 0.8) +
   scale_fill_gradient2(
     low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
-    name = 'log(fotelnak/fotelnek)'
+    name = ' e → a \nlog(fotelnak/fotelnek)'
   ) +
   geom_label(
     data = real_sem |> filter(stem %in% label_stems_2),
@@ -123,9 +176,10 @@ real_sem |>
     title = 'MDS: szemantikai távolságok',
     x = 'MDS dim 1', y = 'MDS dim 2'
   ) +
-  theme_bw()
+  theme_bw() +
+  facet_wrap(~ a_e)
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 5, height = 4)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 9, height = 5)
 
 ## krr
 
@@ -143,8 +197,8 @@ p1 = real_phon |>
   ) +
   geom_smooth() +
   theme_few() +
-  xlab('megfigyelt log(fotelnak/fotelnek)') +
-  ylab('várt log(fotelnak/fotelnek)') +
+  xlab('megfigyelt e → a \nlog(fotelnak/fotelnek)') +
+  ylab('várt e → a \nlog(fotelnak/fotelnek)') +
   ggtitle('KRR LOO: alaki hasonlóság')
 
 # real words: semantic KRR LOO
@@ -168,13 +222,13 @@ p2 = real_sem |>
     axis.text.y = element_blank()
   ) +
   ylim(-7,2) +
-  xlab('megfigyelt log(fotelnak/fotelnek)') +
-  ylab('várt log(fotelnak/fotelnek)') +
+  xlab('megfigyelt e → a \nlog(fotelnak/fotelnek)') +
+  ylab('várt e → a \nlog(fotelnak/fotelnek)') +
   ggtitle('szemantikai hasonlóság')
 
 p1 + p2 + plot_layout(guides = 'collect')
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_krr.png', dpi = 900, width = 8, height = 4)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_krr.png', dpi = 900, width = 8.5, height = 4.5)
 
 ## nonwords
 
@@ -225,8 +279,8 @@ nonwords_phon |>
   ) +
   geom_smooth() +
   theme_bw() +
-  xlab('megfigyelt log(fotelnak/fotelnek)') +
-  ylab('várt log(fotelnak/fotelnek)') +
+  xlab('megfigyelt e → a \nlog(fotelnak/fotelnek)') +
+  ylab('várt e → a \nlog(fotelnak/fotelnek)') +
   ggtitle('alaktani hasonlóság\nlétező szavakhoz')
 
 ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_pred.png', dpi = 900, width = 4, height = 4)
