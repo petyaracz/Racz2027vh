@@ -40,8 +40,57 @@ nonwords_phon = read_tsv('dat/nonwords_phon_preds.tsv')
 real_sem = read_tsv('dat/real_words_semantic_preds.tsv')
 trials_real_words = read_tsv('dat/unfiltered_data_real_word.tsv')
 trials_nonwords = read_tsv('dat/unfiltered_data_nonword.tsv')
+dist_phon = read_tsv('dat/word_distances.tsv.gz')
+dist_sem = read_tsv('dat/semantic_distances_ignore_colname.tsv')
 
 # -- fig -- #  
+
+label_stems_0 = real_phon |> 
+  filter(language %in% c('de','fr')) |> 
+  distinct(stem,language) |> 
+  group_by(language) |> 
+  sample_n(6) |> 
+  pull(stem)
+
+## matrix
+
+dist_phon |> 
+  filter(
+    word1 %in% label_stems_0, 
+    word2 %in% label_stems_0
+         ) |> 
+  ggplot(aes(word1,word2,fill = phon_dist, label = round(phon_dist, 2))) +
+  geom_tile() +
+  geom_text(colour = 'white') +
+  theme_few() +
+  theme(
+    axis.ticks = element_blank(), 
+    axis.title = element_blank()
+        ) +
+  scale_fill_viridis_b() +
+  guides(fill = 'none') +
+  ggtitle('alaktani távolságok')
+
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist1.png', dpi = 900, width = 5, height = 5.5)
+
+dist_sem |> 
+  filter(
+    word1 %in% label_stems_0, 
+    word2 %in% label_stems_0
+  ) |> 
+  ggplot(aes(word1,word2,fill = phon_dist, label = round(phon_dist, 2))) +
+  geom_tile() +
+  geom_text(colour = 'white') +
+  theme_few() +
+  theme(
+    axis.ticks = element_blank(), 
+    axis.title = element_blank()
+  ) +
+  scale_fill_viridis_b() +
+  guides(fill = 'none') +
+  ggtitle('szemantikai távolságok')
+
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_dist2.png', dpi = 900, width = 5, height = 5.5)
 
 ## dist
 
@@ -67,6 +116,28 @@ real_phon |>
 
 ggsave('~/Documents/markdown/markdown_talks/viz/docens_density.png', dpi = 900, width = 5, height = 4.5)
 
+## 3d
+
+library(mgcv)
+lo <- gam(log_odds_back ~ s(semantic_x, semantic_y, k = 50), data = real_sem, sp = 0.01)
+
+grid <- expand.grid(
+  semantic_x = seq(min(real_sem$semantic_x), max(real_sem$semantic_x), length.out = 50),
+  semantic_y = seq(min(real_sem$semantic_y), max(real_sem$semantic_y), length.out = 50)
+)
+
+grid$z_hat <- predict(lo, newdata = grid)
+
+# Plot
+ggplot() +
+  geom_raster(data = grid, aes(semantic_x, semantic_y, fill = z_hat), interpolate = TRUE) +
+  # geom_text(data = real_sem, aes(semantic_x, semantic_y, label = stem), size = 3, colour = "white") +
+  scale_fill_viridis_c(option = "H", na.value = "grey90") +
+  coord_fixed() +
+  theme_void() +
+  labs(fill = "a/e")
+
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_surface.png', dpi = 900, width = 5.5, height = 5)
 
 ## etym
 
