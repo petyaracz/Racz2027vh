@@ -66,6 +66,9 @@ check_krr_inputs(train = train, dist = ph_dist, word_col = 'transcribed', outcom
 
 m_phon = train_krr(
   train, ph_dist,
+  sigma_grid = c(0.25, 0.5, 1, 
+                 2, 3, 4, 5, 8, 16, 32, 64), 
+  alpha_grid = c(0.01, 0.1, 1, 10, 100, 1000),
   word_col = 'transcribed', outcome_col = 'log_odds_back',
   link = 'identity', criterion = 'rmse'
 )
@@ -114,6 +117,9 @@ check_krr_inputs(train = s_train, dist = s_dist, word_col = 'stem', outcome_col 
 
 m_sem = train_krr(
   s_train, s_dist,
+  sigma_grid = c(0.25, 0.5, 1, 
+                 2, 3, 4, 5, 8, 16, 32, 64), 
+  alpha_grid = c(0.01, 0.1, 1, 10, 100, 1000),
   word_col = 'stem', outcome_col = 'log_odds_back',
   link = 'identity', criterion = 'rmse'
 )

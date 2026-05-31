@@ -4,6 +4,7 @@ set.seed(1337)
 setwd('~/Github/Racz2027vh/')
 library(tidyverse)
 library(glmmTMB)
+library(ggthemes)
 library(rstanarm)
 library(bayestestR)
 library(bridgesampling)
@@ -52,6 +53,11 @@ trials_nonwords_combined = nonwords_phon |>
     accept = as.double(accept)
   )
 
+# -- counts -- #
+
+real_phon |> 
+  summarise(sum = sum(back) + sum(front))
+
 # -- lang cats -- #
 
 real_phon = real_phon |> 
@@ -68,21 +74,54 @@ real_sem = real_sem |>
 
 # -- MDS visualisations -- #
 
+theme_void_box = function(...) {
+  theme_void(...) +
+    theme(panel.border = element_rect(colour = "black", fill = NA))
+}
+
 # real words: phonological MDS coloured by corpus log odds
-real_phon |>
+p1 = real_phon |>
+  arrange(log_odds_back) |> 
   ggplot(aes(x = phonological_x, y = phonological_y, fill = log_odds_back)) +
-  geom_point(shape = 21, size = 3, alpha = 0.8) +
+  geom_point(shape = 21, size = 3, alpha = 0.9) +
   scale_fill_gradient2(
-    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
+    low = 'grey', mid = 'white', high = 'darkred', midpoint = 0,
     name = 'log(back/front)'
   ) +
   labs(
-    title = 'MDS: phonological distances, real words',
+    title = 'MDS: phonological distances, corpus',
     x = 'MDS dimension 1', y = 'MDS dimension 2'
   ) +
-  theme_bw()
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  )
 
-ggsave('viz/mds_real_phon.png', dpi = 900, width = 7, height = 5)
+# real words: semantic MDS coloured by corpus log odds
+p2 = real_sem |>
+  arrange(log_odds_back) |> 
+  ggplot(aes(x = semantic_x, y = semantic_y, fill = log_odds_back)) +
+  geom_point(shape = 21, size = 3, alpha = 0.9) +
+  scale_fill_gradient2(
+    low = 'grey', mid = 'white', high = 'darkred', midpoint = 0,
+    name = 'log(back/front)'
+  ) +
+  labs(
+    title = 'MDS: semantic distances, corpus',
+    x = 'MDS dimension 1', y = 'MDS dimension 2'
+  ) +
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+p1 + p2 + plot_layout(guides = 'collect')
+
+ggsave('~/Documents/latex/vh_krr_hun/viz/mds_loocv.pdf', width = 7, height = 3)
 
 # etymology
 real_phon |>
@@ -102,7 +141,7 @@ nonwords_phon |>
   ggplot(aes(x = phonological_x, y = phonological_y, fill = predicted)) +
   geom_point(shape = 21, size = 3, alpha = 0.8) +
   scale_fill_gradient2(
-    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
+    low = 'grey', mid = 'white', high = 'darkred', midpoint = 0,
     name = 'predicted\nlog(back/front)'
   ) +
   labs(
@@ -112,22 +151,6 @@ nonwords_phon |>
   theme_bw()
 
 ggsave('viz/mds_nonwords_phon.png', dpi = 900, width = 7, height = 5)
-
-# real words: semantic MDS coloured by corpus log odds
-real_sem |>
-  ggplot(aes(x = semantic_x, y = semantic_y, fill = log_odds_back)) +
-  geom_point(shape = 21, size = 3, alpha = 0.8) +
-  scale_fill_gradient2(
-    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
-    name = 'log(back/front)'
-  ) +
-  labs(
-    title = 'MDS: semantic distances, real words',
-    x = 'MDS dimension 1', y = 'MDS dimension 2'
-  ) +
-  theme_bw()
-
-ggsave('viz/mds_real_sem.png', dpi = 900, width = 7, height = 5)
 
 # etymology
 real_sem |> 
@@ -217,6 +240,12 @@ MuMIn::r.squaredGLMM(fit1)
 MuMIn::r.squaredGLMM(fit2)
 MuMIn::r.squaredGLMM(fit3)
 
+check_model(fit1)
+check_overdispersion(fit1)
+check_autocorrelation(fit1)
+check_residuals(fit1)
+
+plot(compare_performance(fit1,fit2,fit3,metrics = 'common'))
 compare_performance(fit1,fit2,fit3,metrics = 'common') |> 
   select(Name,AIC,BIC,RMSE) |> 
   arrange(AIC) |> 
@@ -260,227 +289,16 @@ wrap_plots(plots1) / wrap_plots(plots4)
 broom.mixed::tidy(fit1, conf.int = T)
 broom.mixed::tidy(fit4, conf.int = T)
 
-# -- bglm, aggregate (cbind) -- #
+# -- viz glmm -- #
 
-b1 = stan_glm(
-  cbind(back, front) ~ s_phonological_model + s_semantic_model,
-  family = binomial,
-  data = real_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b1.csv")
-)
+p1 = plot_model(fit1, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological\nsimilarity') + ylab('p(back suffix)') + ggtitle('corpus data') + geom_rug()
+p2 = plot_model(fit1, 'pred', terms = 's_semantic_model') + ylim(0,1) + theme_bw() + xlab('semantic\nsimilarity') + ggtitle('') + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
 
-b2 = stan_glm(
-  cbind(back, front) ~ s_phonological_model,
-  family = binomial,
-  data = real_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b2.csv")
-)
+p1 + p2
 
-b3 = stan_glm(
-  cbind(back, front) ~ s_semantic_model,
-  family = binomial,
-  data = real_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b3.csv")
-)
+ggsave('~/Documents/latex/vh_krr_hun/viz/model_predictions_loocv.pdf', width = 5, height = 2.5)
 
-loo1 = kfold(b1, K = 10, seed = 42)
-loo2 = kfold(b2, K = 10, seed = 42)
-loo3 = kfold(b3, K = 10, seed = 42)
 
-loo_compare(loo1, loo2, loo3) |> 
-  as_tibble() |> 
-  write_tsv('corpus_loo.tsv')
-
-# elpd_diff se_diff  
-# b1       0.0       0.0
-# b3  -87437.9   44205.0
-# b2 -249503.8  141705.8
-
-ml1 = bridge_sampler(b1, silent = TRUE)
-ml2 = bridge_sampler(b2, silent = TRUE)
-ml3 = bridge_sampler(b3, silent = TRUE)
-
-# look at log marg likelihood
-print(ml1)
-print(ml2)
-print(ml3)
-# it's just this big
-
-# check estimation error
-error_measures(ml1)
-error_measures(ml2)
-error_measures(ml3)
-
-bayesfactor_models(b1, b2, denominator = b2)
-bayesfactor_models(b1, b3, denominator = b3)
-bayesfactor_models(b2, b3, denominator = b3)
-# these are big because counts are big
-
-posterior_interval(b1, prob = 0.95)
-posterior_interval(b2, prob = 0.95)
-posterior_interval(b3, prob = 0.95)
-
-# -- bglmer, trial-level -- #
-
-b4 = stan_glmer(
-  accept ~ s_phonological_model + s_semantic_model + (1 | id) + (1 | target),
-  family = binomial,
-  data = trials_real_words_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b4.csv"),
-  iter = 4000
-)
-
-b4b = stan_glmer(
-  accept ~ s_phonological_model + s_semantic_model + (1 + s_phonological_model | id) + (1 | target),
-  family = binomial,
-  data = trials_real_words_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b4b.csv"),
-  iter = 4000
-)
-
-b4c = stan_glmer(
-  accept ~ s_phonological_model + s_semantic_model + (1 + s_semantic_model | id) + (1 | target),
-  family = binomial,
-  data = trials_real_words_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b4c.csv"),
-  iter = 4000
-)
-
-# b4d = stan_glmer(
-#   accept ~ s_phonological_model + s_semantic_model + (1 + s_phonological_model + s_semantic_model | id) + (1 | target),
-#   family = binomial,
-#   data = trials_real_words_combined,
-#   seed = 42,
-#   cores = 4,
-#   diagnostic_file = file.path(tempdir(), "b4d.csv"),
-#   iter = 4000,
-#   control = list(adapt_delta = 0.99, max_treedepth = 15)
-# ) # no
-
-b5 = stan_glmer(
-  accept ~ s_phonological_model + (1 | id) + (1 | target),
-  family = binomial,
-  data = trials_real_words_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b5.csv"),
-  iter = 4000
-)
-
-b6 = stan_glmer(
-  accept ~ s_semantic_model + (1 | id) + (1 | target),
-  family = binomial,
-  data = trials_real_words_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b6.csv"),
-  iter = 4000
-)
-
-loo4 = loo(b4)
-loo5 = loo(b5)
-loo6 = loo(b6)
-
-loo4b = loo(b4b)
-loo4c = loo(b4c)
-# loo4d = loo(b4d)
-
-loo_compare(loo4, loo5, loo6) |> 
-  as_tibble() |> 
-  write_tsv('exp_loo.tsv')
-
-# elpd_diff se_diff
-# b4  0.0       0.0   
-# b5 -2.5       2.9   
-# b6 -3.0       3.2   
-
-loo_compare(loo4,loo4b,loo4c)
-# elpd_diff se_diff
-# b4b   0.0       0.0  
-# b4c -12.8       5.4  
-# b4  -18.7       5.8  
-
-ml4 = bridge_sampler(b4, silent = TRUE)
-ml5 = bridge_sampler(b5, silent = TRUE)
-ml6 = bridge_sampler(b6, silent = TRUE)
-
-# look at log marg likelihood
-print(ml4)
-print(ml5)
-print(ml6)
-
-# check estimation error
-error_measures(ml4)
-error_measures(ml5)
-error_measures(ml6) # < 10%
-
-bayesfactor_models(b4, b5, denominator = b5) # b4, BF = 8e+04
-bayesfactor_models(b4, b6, denominator = b6) # b4, BF = 4e+06
-bayesfactor_models(b6, b5, denominator = b6) # b5, BF = 49
-
-posterior_interval(b4, prob = 0.95)
-posterior_interval(b5, prob = 0.95)
-posterior_interval(b6, prob = 0.95)
-
-# -- nonwords -- #
-
-b7 = stan_glmer(
-  accept ~ s_phonological_model + (1 | id) + (1 | target),
-  family = binomial,
-  data = trials_nonwords_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b7.csv"),
-  iter = 4000
-)
-
-b7b = stan_glmer(
-  accept ~ s_phonological_model + (1 + s_phonological_model | id) + (1 | target),
-  family = binomial,
-  data = trials_nonwords_combined,
-  seed = 42,
-  cores = 4,
-  diagnostic_file = file.path(tempdir(), "b7b.csv"),
-  iter = 4000
-)
-
-loo7 = loo(b7)
-loo7b = loo(b7b)
-
-loo_compare(loo7,loo7b)
-
-# -- compare var -- #
-
-VarCorr(fit4)
-posterior_interval(b4, regex_pars = "Sigma")
-
-# -- viz stan models -- #
-
-p1 = plot_model(b1, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological similarity') + ylab('p(back)') + ggtitle('corpus data') + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
-p2 = plot_model(b1, 'pred', terms = 's_semantic_model') + ylim(0,1) + theme_bw() + xlab('semantic similarity') + ylab('p(back)') + ggtitle('') + theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank())
-p3 = plot_model(b4, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological similarity') + ylab('p(back)') + ggtitle('exp data, real words') + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
-p4 = plot_model(b4, 'pred', terms = 's_semantic_model') + ylim(0,1) + theme_bw() + xlab('semantic similarity') + ylab('p(back)') + ggtitle('') + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
-p5 = plot_model(b7, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological similarity') + ylab('p(back)') + ggtitle('exp data, nonwords')
-
-(p1 + p2) / (p3 + p4) / (p5 + plot_spacer())
-ggsave('viz/model_predictions.png', dpi = 900, width = 7, height = 7)
-
-posterior_interval(b1, prob = 0.95)
-posterior_interval(b4, prob = 0.95, regex_pars = '_model')
-posterior_interval(b7, prob = 0.95, regex_pars = '_model')
-
-# within-model: is phonology > semantics?
-brms::hypothesis(b1, "s_phonological_model > s_semantic_model")
-brms::hypothesis(b4, "s_phonological_model > s_semantic_model")
+p3 = plot_model(fit4, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological similarity') + ylab('p(back)') + ggtitle('exp data, real words') + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+p4 = plot_model(fit4, 'pred', terms = 's_semantic_model') + ylim(0,1) + theme_bw() + xlab('semantic similarity') + ylab('p(back)') + ggtitle('') + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+p5 = plot_model(fit7, 'pred', terms = 's_phonological_model') + ylim(0,1) + theme_bw() + xlab('phonological similarity') + ylab('p(back)') + ggtitle('exp data, nonwords')
