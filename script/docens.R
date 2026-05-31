@@ -8,6 +8,7 @@ library(tidyverse)
 library(ggrain)
 library(ggthemes)
 library(patchwork)
+library(ggrepel)
 
 # -- functions -- #
 
@@ -184,7 +185,7 @@ etym |>
   scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.01,0.1,0.5,0.9,0.99), name = 'e → a \np(fotelnak)'), limits = c(-8,6), name = 'log (fotelnak / fotelnek)', breaks = c(-5:5)) +
   theme_few()
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 5, height = 4.5)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_etymology.png', dpi = 900, width = 4.5, height = 4)
 
 ## phono mds
 
@@ -224,7 +225,7 @@ real_phon |>
     low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
     name = ' e → a \nlog(fotelnak/fotelnek)'
   ) +
-  geom_label(
+  geom_label_repel(
     data = real_phon |> filter(stem %in% label_stems_2),
     aes(label = stem),
     size = 3,
@@ -237,7 +238,7 @@ real_phon |>
   theme_bw() +
   facet_wrap(~ a_e)
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 9, height = 5)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_fon_mds.png', dpi = 900, width = 7, height = 3)
 
 # real words: phonological MDS coloured by corpus log odds
 real_sem = real_sem |>
@@ -252,7 +253,7 @@ real_sem |>
     low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
     name = ' e → a \nlog(fotelnak/fotelnek)'
   ) +
-  geom_label(
+  geom_label_repel(
     data = real_sem |> filter(stem %in% label_stems_2),
     aes(label = stem),
     size = 3,
@@ -265,7 +266,7 @@ real_sem |>
   theme_bw() +
   facet_wrap(~ a_e)
 
-ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 9, height = 5)
+ggsave('~/Documents/markdown/markdown_talks/viz/docens_szem_mds.png', dpi = 900, width = 7, height = 3)
 
 ## krr
 
