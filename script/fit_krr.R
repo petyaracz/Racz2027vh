@@ -32,7 +32,7 @@ do_mds = function(dist_df, dist_col = 'phon_dist') {
 # -- read -- #
 
 train = read_tsv('dat/dzsungel.tsv')
-test_non = read_tsv('dat/unfiltered_data_nonword.tsv')
+test_non = read_tsv('dat/filtered_data_nonword.tsv')
 ph_dist = read_tsv('dat/word_distances.tsv.gz')
 s_dist = read_tsv('dat/semantic_distances_ignore_colname.tsv')
 etym = read_tsv('dat/stemlanguage.tsv')
