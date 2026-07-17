@@ -398,6 +398,6 @@ nonwords_phon |>
   theme_few() +
   xlab('megfigyelt mély → magas') +
   ylab('várt mély → magas') +
-  ggtitle('alaktani hasonlóság\nlétező szavakhoz')
+  ggtitle('alaki hasonlóság\nlétező szavakhoz')
 
 ggsave('~/Documents/markdown/markdown_talks/viz/docens_alszo_pred.png', dpi = 900, width = 4, height = 4)

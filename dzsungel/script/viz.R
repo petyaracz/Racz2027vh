@@ -21,7 +21,6 @@ raw = read_tsv('~/Github/RaczRebrus2024/dat/dat_wide_stems.tsv')
 d = read_tsv('dat/dzsungel.tsv')
 pred = read_tsv('dat/dzsungel_pred.tsv')
 dist = read_tsv('dat/word_distances.tsv.gz')
-etym = read_tsv('~/Github/RaczRebrus2024/dat/stemlanguage.tsv')
 
 # -- combine -- #
 
@@ -89,33 +88,34 @@ ggsave('../viz/newfig1.png', dpi = 900, width = 8, height = 4)
 
 # -- etym plot -- #
 
-d |> 
-  left_join(etym) |> 
-  mutate(
-    language2 = case_when(
-      language == 'yi' ~ 'Yiddish',
-      language == 'de' ~ 'German',
-      language == 'fr' ~ 'French',
-      language == 'la' ~ 'Latin'
-    ) |> fct_relevel('Latin','French','German')
-         ) |> 
-  filter(!is.na(language2)) |> 
-  ggplot(aes(language2,log_odds_back)) +
-  geom_hline(aes(yintercept = 0), lty = 2) +
-  geom_rain() +
-  coord_flip() +
-  xlab('source language') +
-  scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = pbreaks, name = 'p(back)'), limits = c(-6,6), name = 'log (back / front)\nkódex → haver', breaks = c(-5:5)) +
-  theme_bw() +
-  ggtitle('back V + <e> stems, varying (n = 106)') +
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_text(size = 15)        # axis tick labels (default ~11, doubled to 22)
-    # axis.title = element_text(size = 24),       # axis titles (default ~12, doubled to 24)
-    # plot.title = element_text(size = 28)        # plot title (default ~14, doubled to 28)
-  )
-
-ggsave('../viz/newfig1b.png', dpi = 900, width = 7, height = 5)
+# broken: relied on stemlanguage.tsv (removed) for source-language codes
+# d |>
+#   left_join(etym) |>
+#   mutate(
+#     language2 = case_when(
+#       language == 'yi' ~ 'Yiddish',
+#       language == 'de' ~ 'German',
+#       language == 'fr' ~ 'French',
+#       language == 'la' ~ 'Latin'
+#     ) |> fct_relevel('Latin','French','German')
+#          ) |>
+#   filter(!is.na(language2)) |>
+#   ggplot(aes(language2,log_odds_back)) +
+#   geom_hline(aes(yintercept = 0), lty = 2) +
+#   geom_rain() +
+#   coord_flip() +
+#   xlab('source language') +
+#   scale_y_continuous(sec.axis = sec_axis(trans = ~ plogis(.), breaks = pbreaks, name = 'p(back)'), limits = c(-6,6), name = 'log (back / front)\nkódex → haver', breaks = c(-5:5)) +
+#   theme_bw() +
+#   ggtitle('back V + <e> stems, varying (n = 106)') +
+#   theme(
+#     axis.title.y = element_blank(),
+#     axis.text.y = element_text(size = 15)        # axis tick labels (default ~11, doubled to 22)
+#     # axis.title = element_text(size = 24),       # axis titles (default ~12, doubled to 24)
+#     # plot.title = element_text(size = 28)        # plot title (default ~14, doubled to 28)
+#   )
+#
+# ggsave('../viz/newfig1b.png', dpi = 900, width = 7, height = 5)
 
 # -- distance plots -- #
 
@@ -218,40 +218,41 @@ ggplot(plot_data, aes(x = x, y = y, fill = log_odds_back)) +
 
 ggsave('../viz/newfig2b.png', dpi = 900, width = 9, height = 5)
 
-plot_data2 = plot_data |> 
-  inner_join(etym) |> 
-  filter(language %in% c('de','yi','fr','la'))
-
-plot_data2 |> 
-  ggplot(aes(x = x, y = y, color = language)) +
-  geom_point(alpha = 0.3, size = 2) +
-  stat_density_2d(aes(color = language), bins = 3, linewidth = 0.8) +
-  geom_label(
-    data = plot_data2 |> 
-      group_by(language) |> 
-      summarise(x = mean(x), y = mean(y)),
-    aes(label = language, fill = language),
-    color = "white",
-    fontface = "bold",
-    size = 5,
-    alpha = .5
-  ) +
-  labs(
-    title = "MDS of Phonetic Distances",
-    subtitle = "Big four etymological sources",
-    x = "MDS Dimension 1",
-    y = "MDS Dimension 2"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    legend.position = "none",
-    strip.text = element_text(face = "bold", size = 11)
-  ) +
-  scale_colour_viridis_d() +
-  scale_fill_viridis_d()
-
-ggsave('../viz/newfig3.png', dpi = 900, width = 6, height = 5)
+# broken: relied on stemlanguage.tsv (removed) for source-language codes
+# plot_data2 = plot_data |>
+#   inner_join(etym) |>
+#   filter(language %in% c('de','yi','fr','la'))
+#
+# plot_data2 |>
+#   ggplot(aes(x = x, y = y, color = language)) +
+#   geom_point(alpha = 0.3, size = 2) +
+#   stat_density_2d(aes(color = language), bins = 3, linewidth = 0.8) +
+#   geom_label(
+#     data = plot_data2 |>
+#       group_by(language) |>
+#       summarise(x = mean(x), y = mean(y)),
+#     aes(label = language, fill = language),
+#     color = "white",
+#     fontface = "bold",
+#     size = 5,
+#     alpha = .5
+#   ) +
+#   labs(
+#     title = "MDS of Phonetic Distances",
+#     subtitle = "Big four etymological sources",
+#     x = "MDS Dimension 1",
+#     y = "MDS Dimension 2"
+#   ) +
+#   theme_minimal() +
+#   theme(
+#     plot.title = element_text(face = "bold", size = 14),
+#     legend.position = "none",
+#     strip.text = element_text(face = "bold", size = 11)
+#   ) +
+#   scale_colour_viridis_d() +
+#   scale_fill_viridis_d()
+#
+# ggsave('../viz/newfig3.png', dpi = 900, width = 6, height = 5)
 
 # -- krr plot -- #
 

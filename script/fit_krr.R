@@ -35,7 +35,13 @@ train = read_tsv('dat/dzsungel.tsv')
 test_non = read_tsv('dat/filtered_data_nonword.tsv')
 ph_dist = read_tsv('dat/word_distances.tsv.gz')
 s_dist = read_tsv('dat/semantic_distances_ignore_colname.tsv')
-etym = read_tsv('dat/stemlanguage.tsv')
+
+# -- clean -- #
+
+drop = c('komplett','korrekt')
+
+train = train |> 
+  filter(!stem %in% drop)
 
 # -- write out participants for nonword exp (spring 2026) -- #
 
@@ -80,8 +86,9 @@ ph_dist_train = ph_dist |>
 mds_phon = do_mds(ph_dist_train) |>
   rename(phonological_x = x, phonological_y = y, transcribed = word)
 
+# no longer joins in stemlanguage.tsv (removed) -- output no longer carries a `language` column,
+# which breaks the etymology facets in eval_krr.R (mds_real_phon_labels.png) and dzsungel/script/viz.R
 real_words_phon = train |>
-  left_join(etym, by = 'stem') |>
   left_join(m_phon$predictions |> select(transcribed, predicted_loo), by = 'transcribed') |>
   left_join(mds_phon, by = 'transcribed') |>
   mutate(sigma = m_phon$sigma, alpha = m_phon$alpha, rmse = m_phon$best_score)
@@ -127,10 +134,25 @@ m_sem = train_krr(
 mds_sem = do_mds(s_dist) |>
   rename(semantic_x = x, semantic_y = y, stem = word)
 
+# no longer joins in stemlanguage.tsv (removed) -- output no longer carries a `language` column,
+# which breaks the etymology facet in eval_krr.R (mds_real_sem_labels.png)
 real_words_semantic = s_train |>
-  left_join(etym, by = 'stem') |>
   left_join(m_sem$predictions |> select(stem, predicted_loo), by = 'stem') |>
   left_join(mds_sem, by = 'stem') |>
   mutate(sigma = m_sem$sigma, alpha = m_sem$alpha, rmse = m_sem$best_score)
 
 write_tsv(real_words_semantic, 'dat/real_words_semantic_preds.tsv')
+
+# -- combine them to form singular dataset -- #
+
+real_words_phon2 = real_words_phon |> 
+  select(-sigma,-alpha,-rmse) |> 
+  rename(predicted_loo_phon = predicted_loo)
+
+real_words_semantic2 = real_words_semantic |> 
+  select(-sigma,-alpha,-rmse) |> 
+  rename(predicted_loo_sem = predicted_loo)
+
+real_words_joined = inner_join(real_words_phon2,real_words_semantic2)
+
+write_tsv(real_words_joined, 'dat/real_words_both_preds.tsv')

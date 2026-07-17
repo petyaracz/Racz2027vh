@@ -26,14 +26,12 @@ transcribeIPA = function(string, direction){
 # -- read -- #
 
 d = read_tsv('~/Github/RaczRebrus2024/dat/dat_wide_stems.tsv')
-s = read_tsv('~/Github/RaczRebrus2024/dat/stemlanguage.tsv')
 f = read_tsv('~/Github/Raczrebrus2024/dat/dat_wide.tsv')
 # c = read_tsv('~/Github/published/Racz2024b/dat/tests.tz')
 
 # -- build master list -- #
 
-d2 = d |> 
-  left_join(s) |>
+d2 = d |>
   mutate(
     log_odds_adj = log((back+1)/(front+1)),  
     stem = fct_reorder(stem, log_odds_adj),
@@ -52,8 +50,8 @@ master = d2 |>
 
 # -- word data -- #
 
-words = master |> 
-  select(stem,transcription,log_odds_back,stem_freq,language) |> 
+words = master |>
+  select(stem,transcription,log_odds_back,stem_freq) |>
   rename(log_odds_back_total = log_odds_back)
 
 words2 = f |> 

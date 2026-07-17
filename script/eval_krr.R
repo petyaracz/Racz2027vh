@@ -57,17 +57,21 @@ real_phon |>
 
 # -- lang cats -- #
 
-real_phon = real_phon |> 
-  mutate(
-    language2 = ifelse(language %in% c('de','en','fr','yi','la'), language, 'other') |> 
-      fct_relevel('yi','de','en','fr','la','other')
-  )
+# stemlanguage.tsv removed -- real_phon/real_sem no longer carry a `language` column,
+# so this derivation is disabled. This feeds the etymology facets further down
+# (mds_real_phon_labels.png, mds_real_sem_labels.png), which are now also disabled.
 
-real_sem = real_sem |> 
-  mutate(
-    language2 = ifelse(language %in% c('de','en','fr','yi','la'), language, 'other') |> 
-      fct_relevel('yi','de','en','fr','la','other')
-  )
+# real_phon = real_phon |>
+#   mutate(
+#     language2 = ifelse(language %in% c('de','en','fr','yi','la'), language, 'other') |>
+#       fct_relevel('yi','de','en','fr','la','other')
+#   )
+#
+# real_sem = real_sem |>
+#   mutate(
+#     language2 = ifelse(language %in% c('de','en','fr','yi','la'), language, 'other') |>
+#       fct_relevel('yi','de','en','fr','la','other')
+#   )
 
 ## -- corpus -- ##
 
@@ -228,17 +232,19 @@ ggsave('~/Documents/latex/vh_krr_hun/viz/phon_exp2.pdf', width = 3, height = 3.5
 
 
 # etymology
-real_phon |>
-  ggplot(aes(x = phonological_x, y = phonological_y)) +
-  stat_density_2d(bins = 5, linewidth = 0.8) +
-  labs(
-    title = 'MDS: phonological distances, real words',
-    x = 'MDS dimension 1', y = 'MDS dimension 2'
-  ) +
-  theme_bw() +
-  facet_wrap( ~ language2)
-
-ggsave('viz/mds_real_phon_labels.png', dpi = 900, width = 7, height = 5)
+# broken: relies on language2, which relies on the language column that was
+# dropped from real_phon after stemlanguage.tsv was removed (see "-- lang cats --" above)
+# real_phon |>
+#   ggplot(aes(x = phonological_x, y = phonological_y)) +
+#   stat_density_2d(bins = 5, linewidth = 0.8) +
+#   labs(
+#     title = 'MDS: phonological distances, real words',
+#     x = 'MDS dimension 1', y = 'MDS dimension 2'
+#   ) +
+#   theme_bw() +
+#   facet_wrap( ~ language2)
+#
+# ggsave('viz/mds_real_phon_labels.png', dpi = 900, width = 7, height = 5)
 
 # nonwords: phonological MDS coloured by KRR prediction
 nonwords_phon |>
@@ -257,17 +263,19 @@ nonwords_phon |>
 ggsave('viz/mds_nonwords_phon.png', dpi = 900, width = 8, height = 3.5)
 
 # etymology
-real_sem |> 
-  ggplot(aes(x = semantic_x, y = semantic_y)) +
-  stat_density_2d(bins = 5, linewidth = 0.8) +
-  labs(
-    title = 'MDS: phonological distances, real words',
-    x = 'MDS dimension 1', y = 'MDS dimension 2'
-  ) +
-  theme_bw() +
-  facet_wrap( ~ language2)
-
-ggsave('viz/mds_real_sem_labels.png', dpi = 900, width = 7, height = 5)
+# broken: relies on language2, which relies on the language column that was
+# dropped from real_sem after stemlanguage.tsv was removed (see "-- lang cats --" above)
+# real_sem |>
+#   ggplot(aes(x = semantic_x, y = semantic_y)) +
+#   stat_density_2d(bins = 5, linewidth = 0.8) +
+#   labs(
+#     title = 'MDS: phonological distances, real words',
+#     x = 'MDS dimension 1', y = 'MDS dimension 2'
+#   ) +
+#   theme_bw() +
+#   facet_wrap( ~ language2)
+#
+# ggsave('viz/mds_real_sem_labels.png', dpi = 900, width = 7, height = 5)
 
 p1 + p2
 
