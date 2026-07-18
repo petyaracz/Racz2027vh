@@ -8,19 +8,66 @@ library(patchwork)
 
 # -- read -- #
 
-combined = read_tsv('dat/real_words_both_preds.tsv')
+d = read_tsv('dat/real_words_both_preds.tsv')
 
 # -- counts -- #
 
-combined |> 
+d |> 
   summarise(sum = sum(back) + sum(front))
+
+# -- borrowings -- #
+
+d |> 
+  select(stem,p_back,borrowing_language,borrowing_period,note)
+
+detym = d |> 
+  mutate(
+    borrowing_period = ifelse(is.na(borrowing_period), 'unknown', borrowing_period) |> 
+      fct_relevel('unknown', after = Inf),
+    borrowing_language = ifelse(is.na(borrowing_language), 'other', borrowing_language) |> 
+      fct_relevel('other', after = Inf)
+  ) |>  
+  mutate(
+    n1 = n(),
+    .by = borrowing_language
+         ) |> 
+  mutate(
+    n2 = n(),
+    .by = borrowing_period
+  ) |> 
+  mutate(
+    borrowing_language2 = glue('{borrowing_language} (n = {n1})'),
+    borrowing_period2 = glue('{borrowing_period} (n = {n2})')
+         )
+
+treemap::treemap(detym,
+                 palette = 'Greys',
+                 index = c("borrowing_language2"),
+                 vSize = "n1",
+                 title = ""
+)
+
+treemap::treemap(detym,
+                 palette = 'Greys',
+                 index = c("borrowing_period2"),
+                 vSize = "n2",
+                 title = ""
+)
+
+detym |> 
+  ggplot(aes(x = first_mention)) +
+  geom_histogram() +
+  theme_few() +
+  facet_wrap( ~ borrowing_language, ncol = 1) +
+  xlab('first mention') +
+  ggtitle('First mention and source language of back + <e> stems (n = 108)')
 
 ## -- corpus -- ##
 
 # -- MDS visualisations -- #
 
 # real words: phonological MDS coloured by corpus log odds
-p1 = combined |>
+p1 = d |>
   arrange(log_odds_back) |> 
   ggplot(aes(x = phonological_x, y = phonological_y, fill = log_odds_back)) +
   geom_point(shape = 21, size = 3, alpha = 0.9) +
@@ -40,7 +87,7 @@ p1 = combined |>
   )
 
 # real words: semantic MDS coloured by corpus log odds
-p2 = combined |>
+p2 = d |>
   arrange(log_odds_back) |> 
   ggplot(aes(x = semantic_x, y = semantic_y, fill = log_odds_back)) +
   geom_point(shape = 21, size = 3, alpha = 0.9) +
@@ -65,7 +112,7 @@ ggsave('~/Documents/latex/vh_krr_hun/viz/mds_loocv.pdf', width = 8, height = 3.5
 
 # -- mds with language data -- #
 
-# p3 = combined |> 
+# p3 = d |> 
 #   filter(!is.na(borrowing_category)) |> 
 #   ggplot(aes(phonological_x, phonological_y, colour = borrowing_category)) +
 #   geom_point(alpha = .3) +
@@ -76,7 +123,7 @@ ggsave('~/Documents/latex/vh_krr_hun/viz/mds_loocv.pdf', width = 8, height = 3.5
 #   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
 #   ggtitle('similarity space')
 # 
-# p4 = combined |> 
+# p4 = d |> 
 #   filter(!is.na(borrowing_category)) |> 
 #   ggplot(aes(semantic_x, semantic_y, colour = borrowing_category)) +
 #   geom_point(alpha = .3) +
@@ -87,7 +134,7 @@ ggsave('~/Documents/latex/vh_krr_hun/viz/mds_loocv.pdf', width = 8, height = 3.5
 #   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
 #   ggtitle('distributional space')
 
-p3 = combined |> 
+p3 = d |> 
   filter(!is.na(borrowing_category)) |> 
   ggplot(aes(phonological_x, phonological_y)) +
   geom_point(alpha = .3, colour = 'lightgrey') +
@@ -97,7 +144,7 @@ p3 = combined |>
   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
   ggtitle('similarity space')
 
-p4 = combined |> 
+p4 = d |> 
   filter(!is.na(borrowing_category)) |> 
   ggplot(aes(semantic_x, semantic_y)) +
   geom_point(alpha = .3, colour = 'lightgrey') +

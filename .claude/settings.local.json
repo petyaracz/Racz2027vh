@@ -6,7 +6,8 @@
       "Bash(GIT_CONFIG_GLOBAL=/dev/null git diff *)",
       "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files non_word_exp/ dat/)",
       "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files script/)",
-      "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files)"
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files)",
+      "Bash(awk '-F\\\\t' 'NR==1{for\\(i=1;i<=NF;i++\\) col[$i]=i; print \"international col:\", col[\"international\"], \"note col:\", col[\"note\"]} *)"
     ]
   }
 }
