@@ -10,6 +10,13 @@ library(glue)
 d = read_tsv('dat/dzsungel.tsv')
 e = read_csv('dat/entries_hand_edited.csv')
 
+# -- this is bad sorry -- #
+
+d$borrowing_label = NULL
+d$borrowing_language = NULL
+d$borrowing_period = NULL
+d$borrowing_category = NULL
+
 # -- code -- #
 
 e |> count(`source languages`, sort = T)
@@ -29,13 +36,20 @@ e2 = e |>
       `source languages` == 'jiddis' ~ 'Yiddish'
     ),
     borrowing_period = case_when(
-      `first year attested` < 1751 ~ '-1750',
-      `first year attested` > 1750 & `first year attested` < 1911 ~ '1751-1910',
-      `first year attested` > 1910 ~ '1911-'
+      `first year attested` < 1901 ~ '-1900',
+      `first year attested` > 1901 ~ '1901-'
     ),
-    stem = word
+    stem = word,
+    borrowing_label = case_when(
+      borrowing_language %in% c('German','English') & !is.na(borrowing_period) ~ glue::glue('{borrowing_language}; {borrowing_period}'),
+      borrowing_language %in% c('French','Latin','Yiddish') ~ borrowing_language
+    ),
+    borrowing_category = case_when(
+      borrowing_language %in% c('German','Yiddish') ~ 'German/Yiddish',
+      borrowing_language %in% c('French','Latin') ~ 'French/Latin'
+    )
   ) |> 
-  select(stem,borrowing_language,borrowing_period)
+  select(stem,borrowing_language,borrowing_period,borrowing_label,borrowing_category)
 
 # -- join -- #
 

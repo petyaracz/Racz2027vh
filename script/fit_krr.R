@@ -96,6 +96,8 @@ real_words_phon = train |>
 write_tsv(real_words_phon, 'dat/real_words_phon_preds.tsv')
 
 # -- 2. nonwords + phonological distance -- #
+# dormant: nonword experiment is retired, nothing downstream reads dat/nonwords_phon_preds.tsv any more.
+# kept for the desk drawer in case the nonword exp gets revived.
 
 preds_non = predict_krr(
   train_data = train, test_data = test_non2, dist_df = ph_dist,

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git log *)",
+      "Bash(export GIT_CONFIG_GLOBAL=/dev/null)",
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git diff *)",
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files non_word_exp/ dat/)",
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files script/)",
+      "Bash(GIT_CONFIG_GLOBAL=/dev/null git ls-files)"
+    ]
+  }
+}
