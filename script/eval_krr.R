@@ -5,6 +5,7 @@ setwd('~/Github/Racz2027vh/')
 library(tidyverse)
 library(glmmTMB)
 library(ggthemes)
+library(ggeffects)
 library(performance)
 library(sjPlot)
 library(patchwork)
@@ -26,7 +27,23 @@ combined = combined |>
 combined |> 
   summarise(sum = sum(back) + sum(front))
 
-# -- glm, corpus -- #
+# -- glm, null -- #
+
+fit0 = glmmTMB(
+  cbind(back,front) ~ 1 + (1|stem),
+  family = binomial,
+  data = combined
+)
+
+# -- glm, cat -- #
+
+fit0b = glmmTMB(
+  cbind(back,front) ~ borrowing_category + (1|stem),
+  family = binomial,
+  data = combined
+)
+
+# -- glm, krr -- #
 
 fit1 = glmmTMB(
   cbind(back,front) ~ s_phonological_model + s_semantic_model + (1|stem),
@@ -52,6 +69,12 @@ check_model(fit1)
 check_overdispersion(fit1)
 check_autocorrelation(fit1)
 check_residuals(fit1)
+
+# -- labels -- #
+
+compare_performance(fit0,fit0b,fit1)
+broom.mixed::tidy(fit0b, conf.int = T)
+broom.mixed::tidy(fit1, conf.int = T)
 
 # -- hmm -- #
 
@@ -121,3 +144,52 @@ summary_table = perf |>
 summary_table |> 
   knitr::kable(digits = 3, 'latex') |> 
   write_lines('glmm_comparisons.txt')
+
+# -- viz -- #
+
+plot_model(fit0b, 'pred') +
+  theme_bw() +
+  xlab('source language') +
+  ylab('p(back)') +
+  coord_flip() +
+  ylim(0,.25)
+
+p1 = plot_model(fit1, 'pred', terms = 's_phonological_model') +
+  theme_bw() +
+  xlab('similarity') +
+  ylab('p(back)') +
+  ylim(0,1) +
+  ggtitle('')
+
+p2 = plot_model(fit1, 'pred', terms = 's_semantic_model') +
+  theme_bw() +
+  xlab('distribution') +
+  ylab('p(back)') +
+  ylim(0,1) +
+  ggtitle('') +
+  theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+p1 + p2
+
+pred_phon = ggpredict(fit1, terms = "s_phonological_model") |> 
+  as.data.frame() |> 
+  mutate(predictor = "phonological\nsimilarity")
+
+pred_sem = ggpredict(fit1, terms = "s_semantic_model") |> 
+  as.data.frame() |> 
+  mutate(predictor = "contextual\ndistribution")
+
+pred_all = bind_rows(pred_phon, pred_sem)
+
+ggplot(pred_all, aes(x = x, y = predicted, colour = predictor, fill = predictor)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  ylim(0, 1) +
+  xlab("standardized value") +
+  ylab("p(back)") +
+  labs(colour = "predictor", fill = "predictor") +
+  scale_colour_colourblind() +
+  scale_fill_colourblind()
+
+ggsave('viz/model_predictions_fit1.pdf', width = 4, height = 3)
