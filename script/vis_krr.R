@@ -3,22 +3,16 @@
 set.seed(1337)
 setwd('~/Github/Racz2027vh/')
 library(tidyverse)
+library(glue)
 library(ggthemes)
+library(ggrepel)
 library(patchwork)
 
 # -- read -- #
 
 d = read_tsv('dat/real_words_both_preds.tsv')
 
-# -- counts -- #
-
-d |> 
-  summarise(sum = sum(back) + sum(front))
-
-# -- borrowings -- #
-
-d |> 
-  select(stem,p_back,borrowing_language,borrowing_period,note)
+# -- etym -- #
 
 detym = d |> 
   mutate(
@@ -30,7 +24,7 @@ detym = d |>
   mutate(
     n1 = n(),
     .by = borrowing_language
-         ) |> 
+  ) |> 
   mutate(
     n2 = n(),
     .by = borrowing_period
@@ -38,122 +32,223 @@ detym = d |>
   mutate(
     borrowing_language2 = glue('{borrowing_language} (n = {n1})'),
     borrowing_period2 = glue('{borrowing_period} (n = {n2})')
-         )
+  )
 
-treemap::treemap(detym,
-                 palette = 'Greys',
-                 index = c("borrowing_language2"),
-                 vSize = "n1",
-                 title = ""
-)
+# -- words -- #
 
-treemap::treemap(detym,
-                 palette = 'Greys',
-                 index = c("borrowing_period2"),
-                 vSize = "n2",
-                 title = ""
-)
+label_stems = c('kódex', 'duett', 'szoftver',  'fotel', 'haver', 'fater', 'macesz')
 
-detym |> 
+# -- list -- #
+
+# a little over 9 billion words
+
+d |> 
+  mutate(
+    stem_log10_freq = log10(stem_freq / 9000),
+    borrowing_label = ifelse(is.na(borrowing_label), '', borrowing_label),
+    borrowing_label = ifelse(is.na(borrowing_label), '', borrowing_label),
+    international2 = case_when(
+      is.na(international) ~ '',
+      international ~ 'international word',
+      !international ~ ''
+    )
+  ) |> 
+  arrange(-log_odds_back) |> 
+  select(stem,stem_log10_freq,log_odds_back,borrowing_label,international2) |> 
+  knitr::kable('latex', digits = 2)
+
+# -- counts -- #
+
+d |> 
+  summarise(sum = sum(back) + sum(front))
+
+################################
+# descriptive stats
+################################
+
+p0 = d |>
+  ggplot(aes(y = -log_odds_back)) +
+  geom_hline(aes(yintercept = 0), lty = 3) +
+  geom_histogram(aes(fill = after_stat(y))) +
+  geom_rug(aes(color = log_odds_back)) +
+  geom_label_repel(
+    data = d |> filter(stem %in% label_stems),
+    aes(x = 0, label = stem),
+    size = 5,
+    fill = 'lightgrey'
+  ) +
+  scale_fill_viridis_c(option = 'H', guide = "none") +
+  scale_color_viridis_c(option = 'H', guide = "none") +
+  coord_flip() +
+  xlab('') +
+  scale_y_continuous(
+    sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.001, 0.01, 0.1, 0.5, 0.9, 0.99),
+                        name = 'back →  front (p(front)'),
+    name = 'log (front / back)',
+    breaks = c(-9:5)
+  ) +
+  theme_few()
+
+p1 = detym |> 
+  mutate(borrowing_language = fct_relevel(borrowing_language, 'other', 'Yiddish','German','English','French','Latin')) |> 
+  ggplot(aes(y = borrowing_language)) +
+  geom_bar() +
+  theme_few() +
+  ylab('source language') +
+  ggtitle('Source language (n = 154)')
+
+p2 = detym |> 
+  mutate(borrowing_period = borrowing_period |> fct_relevel('before 16th c') |> fct_rev()) |> 
+  ggplot(aes(y = borrowing_period)) +
+  geom_bar() +
+  theme_few() +
+  ylab('first mention') +
+  ggtitle('First mention (n = 154)')
+
+p3 = detym |> 
   ggplot(aes(x = first_mention)) +
   geom_histogram() +
   theme_few() +
   facet_wrap( ~ borrowing_language, ncol = 1) +
   xlab('first mention') +
-  ggtitle('First mention and source language of back + <e> stems (n = 108)')
+  scale_y_continuous(breaks = c(1,3,5)) +
+  ggtitle('Source language and first mention (n = 108)')
 
-## -- corpus -- ##
+p0 / (p1 + p2) / p3 + plot_layout(heights = c(1,1,3))
+ggsave('viz/data_descriptive_stats.pdf', width = 6, height = 9)
+ggsave('~/Documents/latex/vh_krr_hun/viz/data_descriptive_stats.pdf', width = 6, height = 9)
 
-# -- MDS visualisations -- #
+################################
+# MDS maps
+################################
 
-# real words: phonological MDS coloured by corpus log odds
-p1 = d |>
-  arrange(log_odds_back) |> 
-  ggplot(aes(x = phonological_x, y = phonological_y, fill = log_odds_back)) +
-  geom_point(shape = 21, size = 3, alpha = 0.9) +
-  scale_fill_gradient2(
-    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
-    name = 'log(back/front)'
-  ) +
-  labs(
-    title = 'MDS: phonological distances, corpus',
-    x = 'MDS dimension 1', y = 'MDS dimension 2'
-  ) +
-  theme_few() +
-  theme(
-    axis.title = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank()
-  )
-
-# real words: semantic MDS coloured by corpus log odds
-p2 = d |>
-  arrange(log_odds_back) |> 
-  ggplot(aes(x = semantic_x, y = semantic_y, fill = log_odds_back)) +
-  geom_point(shape = 21, size = 3, alpha = 0.9) +
-  scale_fill_gradient2(
-    low = 'grey', mid = 'white', high = 'gold', midpoint = 0,
-    name = 'log(back/front)'
-  ) +
-  labs(
-    title = 'MDS: semantic distances, corpus',
-    x = 'MDS dimension 1', y = 'MDS dimension 2'
-  ) +
-  theme_few() +
-  theme(
-    axis.title = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank()
-  )
-
-p1 + p2 + plot_layout(guides = 'collect')
-
-ggsave('~/Documents/latex/vh_krr_hun/viz/mds_loocv.pdf', width = 8, height = 3.5)
-
-# -- mds with language data -- #
-
-# p3 = d |> 
-#   filter(!is.na(borrowing_category)) |> 
-#   ggplot(aes(phonological_x, phonological_y, colour = borrowing_category)) +
-#   geom_point(alpha = .3) +
-#   geom_density_2d() +
-#   theme_bw() +
-#   scale_colour_colourblind() +
-#   labs(colour = 'source language') +
-#   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-#   ggtitle('similarity space')
-# 
-# p4 = d |> 
-#   filter(!is.na(borrowing_category)) |> 
-#   ggplot(aes(semantic_x, semantic_y, colour = borrowing_category)) +
-#   geom_point(alpha = .3) +
-#   geom_density_2d() +
-#   theme_bw() +
-#   scale_colour_colourblind() +
-#   labs(colour = 'source language') +
-#   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-#   ggtitle('distributional space')
-
-p3 = d |> 
-  filter(!is.na(borrowing_category)) |> 
-  ggplot(aes(phonological_x, phonological_y)) +
-  geom_point(alpha = .3, colour = 'lightgrey') +
-  geom_density_2d(colour = 'darkgrey') +
-  theme_bw() +
-  facet_wrap(~ borrowing_category) +
-  theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-  ggtitle('similarity space')
+# top row, similarity space
 
 p4 = d |> 
-  filter(!is.na(borrowing_category)) |> 
+  ggplot(aes(phonological_x,phonological_y,fill = log_odds_back)) +
+  geom_point(size = 3, pch = 21, alpha = .75) +
+  geom_label_repel(
+    data = d |> filter(stem %in% label_stems),
+    aes(label = stem),
+    size = 5,
+    fill = 'lightgrey'
+  ) +
+  scale_fill_viridis_c(na.value = "grey90", direction = -1) +
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  ) +
+  labs(
+    fill = 'log(back/front)'
+    ) +
+  ggtitle('phonological space')
+
+p5 = d |> 
+  ggplot(aes(semantic_x,semantic_y,fill = log_odds_back)) +
+  geom_point(size = 3, pch = 21, alpha = .75) +
+  geom_label_repel(
+    data = d |> filter(stem %in% label_stems),
+    aes(label = stem),
+    size = 5,
+    fill = 'lightgrey'
+  ) +
+  scale_fill_viridis_c(na.value = "grey90", direction = -1) +
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  ) +
+  labs(
+    fill = 'log(back/front)'
+  ) +
+  ggtitle('distributional semantic space')
+
+# mid row, behaviour bin densities (no GAM smoothing: raw KDE per bin, same
+# technique as the language row below so the whole figure shares one visual
+# grammar); bins are a 25%-50%-25% split on log_odds_back, not equal thirds
+
+d2 = d |>
+  mutate(
+    behaviour_bin = cut(
+      log_odds_back,
+      breaks = quantile(log_odds_back, probs = c(0, .25, .75, 1)),
+      labels = c('front-preferring (0-25%)', 'mid (26-75%)', 'back-preferring (76-100%)'),
+      include.lowest = TRUE
+    )
+  )
+
+p6 = d2 |>
+  ggplot(aes(phonological_x, phonological_y)) +
+  geom_point(data = d, colour = 'grey85', alpha = .5, size = 1) +
+  geom_density_2d(colour = 'black') +
+  facet_wrap(~ behaviour_bin, nrow = 1) +
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  ) +
+  ggtitle('phonological space')
+
+p7 = d2 |>
   ggplot(aes(semantic_x, semantic_y)) +
-  geom_point(alpha = .3, colour = 'lightgrey') +
-  geom_density_2d(colour = 'darkgrey') +
-  theme_bw() +
-  facet_wrap(~ borrowing_category) +
+  geom_point(data = d, colour = 'grey85', alpha = .5, size = 1) +
+  geom_density_2d(colour = 'black') +
+  facet_wrap(~ behaviour_bin, nrow = 1) +
+  theme_few() +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  ) +
+  ggtitle('distributional semantic space')
+
+((p4 + p5) + plot_layout(guides = 'collect') )/ p6 / p7 
+
+ggsave('viz/mds_pref.pdf', width = 8.5, height = 9)
+ggsave('~/Documents/latex/vh_krr_hun/viz/mds_pref.pdf', width = 8.5, height = 9)
+
+# bottom rows, source language clustering, restricted to the four languages
+# with enough words to say anything about; grey backdrop = full word set for
+# context; one density contour per language (German/French/Latin only, n = 9
+# for Yiddish is too few for a KDE to mean anything); points coloured by
+# century of first mention
+
+d_lang = d |>
+  filter(borrowing_language %in% c('Latin', 'French', 'German', 'Yiddish')) |>
+  mutate(
+    borrowing_language = factor(borrowing_language, levels = c('Latin', 'French', 'German', 'Yiddish')),
+    century = ((first_mention - 1) %/% 100) + 1
+  )
+
+p8 = d_lang |>
+  ggplot(aes(phonological_x, phonological_y)) +
+  geom_point(data = d |> select(-borrowing_language), colour = 'grey85', alpha = .5, size = 1) +
+  geom_density_2d(data = d_lang |> filter(borrowing_language != 'Yiddish'), colour = 'black') +
+  geom_point(aes(colour = century), size = 1.5, alpha = .75) +
+  facet_wrap(~ borrowing_language, nrow = 1) +
+  scale_colour_viridis_c(option = 'plasma', na.value = 'grey50') +
+  theme_few() +
   theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-  ggtitle('distributional space')
+  labs(colour = 'century') +
+  ggtitle('phonological space')
 
-p3 / p4 + plot_layout(guides = 'collect')
+p9 = d_lang |>
+  ggplot(aes(semantic_x, semantic_y)) +
+  geom_point(data = d |> select(-borrowing_language), colour = 'grey85', alpha = .5, size = 1) +
+  geom_density_2d(data = d_lang |> filter(borrowing_language != 'Yiddish'), colour = 'black') +
+  geom_point(aes(colour = century), size = 1.5, alpha = .75) +
+  facet_wrap(~ borrowing_language, nrow = 1) +
+  scale_colour_viridis_c(option = 'plasma', na.value = 'grey50') +
+  theme_few() +
+  theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+  labs(colour = 'century') +
+  ggtitle('distributional semantic space')
 
-ggsave('viz/obs_spaces.png', dpi = 900, width = 6.5, height = 6.5)
+p8 / p9 + plot_layout(guides = 'collect')
+
+ggsave('viz/mds_lang.pdf', width = 8, height = 4.5)
+ggsave('~/Documents/latex/vh_krr_hun/viz/mds_lang.pdf', width = 8, height = 4.5)

@@ -38,7 +38,7 @@ fit0 = glmmTMB(
 # -- glm, cat -- #
 
 fit0b = glmmTMB(
-  cbind(back,front) ~ borrowing_category + (1|stem),
+  cbind(back,front) ~ borrowing_language + (1|stem),
   family = binomial,
   data = combined
 )
@@ -177,7 +177,7 @@ pred_phon = ggpredict(fit1, terms = "s_phonological_model") |>
 
 pred_sem = ggpredict(fit1, terms = "s_semantic_model") |> 
   as.data.frame() |> 
-  mutate(predictor = "contextual\ndistribution")
+  mutate(predictor = "distributional\nsemantics")
 
 pred_all = bind_rows(pred_phon, pred_sem)
 
@@ -193,3 +193,4 @@ ggplot(pred_all, aes(x = x, y = predicted, colour = predictor, fill = predictor)
   scale_fill_colourblind()
 
 ggsave('viz/model_predictions_fit1.pdf', width = 4, height = 3)
+ggsave('~/Documents/latex/vh_krr_hun/viz/model_predictions_fit1.pdf', width = 4, height = 3)

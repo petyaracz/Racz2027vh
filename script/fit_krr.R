@@ -25,8 +25,9 @@ do_mds = function(dist_df, dist_col = 'phon_dist') {
   mat[is.na(mat)] = t(mat)[is.na(mat)]
   res = cmdscale(mat, k = 2)
   as_tibble(res) |>
-    rename(x = V1, y = V2) |>
-    mutate(word = rownames(res))
+    mutate(x = scales::rescale(V1), y = scales::rescale(V2)) |>
+    mutate(word = rownames(res)) |> 
+    select(-V1,-V2)
 }
 
 # -- read -- #
