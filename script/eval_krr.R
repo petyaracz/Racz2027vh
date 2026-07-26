@@ -12,89 +12,83 @@ library(patchwork)
 
 # -- read -- #
 
-combined = read_tsv('dat/real_words_both_preds.tsv')
+lo_preds = read_tsv('dat/real_words_krr_lo_preds.tsv')
+label_preds = read_tsv('dat/real_words_krr_label_preds.tsv')
 
 # -- glm setup -- #
 
-combined = combined |> 
+lo_preds = lo_preds |> 
+  mutate(
+    category_educated_other = fct_relevel(category_educated_other, 'educated'),
+    s_phonological_model = scales::rescale(predicted_loo_phon),
+    s_semantic_model = scales::rescale(predicted_loo_sem)
+  )
+
+label_preds = label_preds |> 
   mutate(
     s_phonological_model = scales::rescale(predicted_loo_phon),
     s_semantic_model = scales::rescale(predicted_loo_sem)
   )
 
-# -- counts -- #
-
-combined |> 
-  summarise(sum = sum(back) + sum(front))
-
-# -- glm, null -- #
+######################################################
+# lo predictions
+######################################################
 
 fit0 = glmmTMB(
   cbind(back,front) ~ 1 + (1|stem),
   family = binomial,
-  data = combined
+  data = lo_preds
 )
-
-# -- glm, cat -- #
-
-fit0b = glmmTMB(
-  cbind(back,front) ~ borrowing_language + (1|stem),
-  family = binomial,
-  data = combined
-)
-
-# -- glm, krr -- #
 
 fit1 = glmmTMB(
-  cbind(back,front) ~ s_phonological_model + s_semantic_model + (1|stem),
+  cbind(back,front) ~ category_educated_other + (1|stem),
   family = binomial,
-  data = combined
+  data = lo_preds
 )
 
 fit2 = glmmTMB(
   cbind(back,front) ~ s_phonological_model + (1|stem),
   family = binomial,
-  data = combined
+  data = lo_preds
 )
 
 fit3 = glmmTMB(
   cbind(back,front) ~ s_semantic_model + (1|stem),
   family = binomial,
-  data = combined
+  data = lo_preds
+)
+
+fit4 = glmmTMB(
+  cbind(back,front) ~ s_phonological_model + s_semantic_model + (1|stem),
+  family = binomial,
+  data = lo_preds
+)
+
+fit5 = glmmTMB(
+  cbind(back,front) ~ s_phonological_model * s_semantic_model + (1|stem),
+  family = binomial,
+  data = lo_preds
 )
 
 # -- diagnostics -- #
 
+check_model(fit5)
+check_model(fit4)
+check_model(fit3)
+check_model(fit2)
 check_model(fit1)
-check_overdispersion(fit1)
-check_autocorrelation(fit1)
-check_residuals(fit1)
-
-# -- labels -- #
-
-compare_performance(fit0,fit0b,fit1)
-broom.mixed::tidy(fit0b, conf.int = T)
-broom.mixed::tidy(fit1, conf.int = T)
-
-# -- hmm -- #
-
-# hmm
-BIC(fit1) - BIC(fit2)
-# exp((BIC_ref - BIC_model)/2)
-nobs(fit1); nobs(fit2); nobs(fit3)
-logLik(fit1); logLik(fit2); logLik(fit3)
-BIC(fit1); BIC(fit2); BIC(fit3)
 
 # -- tidy table -- #
 
 # basic indices
-perf = compare_performance(fit1, fit2, fit3, metrics = "common") |>
+perf = compare_performance(fit0, fit1, fit2, fit3, fit4, metrics = "common") |>
   as.data.frame() |>
-  select(Name, AIC, BIC, RMSE)
+  select(Name, AIC, BIC)
 
 r21 = MuMIn::r.squaredGLMM(fit1)[1,1]
 r22 = MuMIn::r.squaredGLMM(fit2)[1,1]
 r23 = MuMIn::r.squaredGLMM(fit3)[1,1]
+r24 = MuMIn::r.squaredGLMM(fit4)[1,1]
 
 # note that test_bf uses frequentist approximation
 # BF ≈ exp((BIC_ref - BIC_model)/2)
@@ -112,85 +106,116 @@ get_stat_row2 = function(test_result, label, stat_col, col_name) {
 }
 
 # fit1 as numerator, compared against fit2 and fit3
-bf_fit1_vs = bind_rows(
-  get_bf_row2(test_bf(fit2, fit1), "fit2", "BF_fit1_vs"),   # fit1 over fit2
-  get_bf_row2(test_bf(fit3, fit1), "fit3", "BF_fit1_vs")    # fit1 over fit3
+bf_fit4_vs = bind_rows(
+  get_bf_row2(test_bf(fit0, fit4), "fit0", "BF_fit4_vs"),
+  get_bf_row2(test_bf(fit1, fit4), "fit1", "BF_fit4_vs"), 
+  get_bf_row2(test_bf(fit2, fit4), "fit2", "BF_fit4_vs"),
+  get_bf_row2(test_bf(fit3, fit4), "fit3", "BF_fit4_vs"),
 ) |> 
   mutate(
-    log_BF_fit1_vs = log(BF_fit1_vs)
+    log_BF_fit4_vs = log(BF_fit4_vs)
   ) |> 
-  select(Name,log_BF_fit1_vs)
+  select(Name,log_BF_fit4_vs)
 
-lr_fit1_vs = bind_rows(
-  get_stat_row2(test_likelihoodratio(fit2, fit1), "fit2", "Chi2", "Chisq_fit1_vs"),
-  get_stat_row2(test_likelihoodratio(fit3, fit1), "fit3", "Chi2", "Chisq_fit1_vs")
+lr_fit4_vs = bind_rows(
+  get_stat_row2(test_likelihoodratio(fit2, fit4), "fit2", "Chi2", "Chisq_fit4_vs"),
+  get_stat_row2(test_likelihoodratio(fit3, fit4), "fit3", "Chi2", "Chisq_fit4_vs")
 )
-
-# fit3 as numerator vs fit2
-bf_fit3_vs_fit2 = get_bf_row2(test_bf(fit2, fit3), "fit2", "BF_fit3_vs_fit2") |> 
-  mutate(
-    log_BF_fit3_vs_fit2 = log(BF_fit3_vs_fit2)
-  ) |> 
-  select(Name,log_BF_fit3_vs_fit2)
 
 # join together
 summary_table = perf |>
-  left_join(bf_fit1_vs, by = "Name") |>
-  left_join(lr_fit1_vs, by = "Name") |>
-  left_join(bf_fit3_vs_fit2, by = "Name") |> 
-  bind_cols(r2m = c(r21,r22,r23)) |> 
-  relocate(r2m, .after = RMSE)
+  left_join(bf_fit4_vs, by = "Name") |>
+  left_join(lr_fit4_vs, by = "Name") |>
+  bind_cols(r2m = c(NA,r21,r22,r23,r24))
 
 summary_table |> 
-  knitr::kable(digits = 3, 'latex') |> 
-  write_lines('glmm_comparisons.txt')
+  knitr::kable(digits = 2, 'latex') |> 
+  write_lines('glmm_comparisons_lo_preds.txt')
 
-# -- viz -- #
+# -- coefs -- #
 
-plot_model(fit0b, 'pred') +
-  theme_bw() +
-  xlab('source language') +
-  ylab('p(back)') +
-  coord_flip() +
-  ylim(0,.25)
+broom.mixed::tidy(fit4, conf.int = T) |> 
+  filter(effect == 'fixed') |> 
+  select(term,estimate,std.error,conf.low,conf.high) |> 
+  knitr::kable(digits = 2, 'latex') |> 
+  write_lines('best_glmm_coefs_lo_preds.txt')
 
-p1 = plot_model(fit1, 'pred', terms = 's_phonological_model') +
-  theme_bw() +
-  xlab('similarity') +
-  ylab('p(back)') +
-  ylim(0,1) +
-  ggtitle('')
+cor.test(lo_preds$predicted_loo_phon,lo_preds$predicted_loo_sem)
 
-p2 = plot_model(fit1, 'pred', terms = 's_semantic_model') +
-  theme_bw() +
-  xlab('distribution') +
-  ylab('p(back)') +
-  ylim(0,1) +
-  ggtitle('') +
-  theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+######################################################
+# label predictions
+######################################################
 
-p1 + p2
+lfit0 = glmmTMB(
+  category_educated ~ 1,
+  family = binomial,
+  data = label_preds
+)
 
-pred_phon = ggpredict(fit1, terms = "s_phonological_model") |> 
-  as.data.frame() |> 
-  mutate(predictor = "phonological\nsimilarity")
+lfit2 = glmmTMB(
+  category_educated ~ s_phonological_model,
+  family = binomial,
+  data = label_preds
+)
 
-pred_sem = ggpredict(fit1, terms = "s_semantic_model") |> 
-  as.data.frame() |> 
-  mutate(predictor = "distributional\nsemantics")
+lfit3 = glmmTMB(
+  category_educated ~ s_semantic_model,
+  family = binomial,
+  data = label_preds
+)
 
-pred_all = bind_rows(pred_phon, pred_sem)
+lfit4 = glmmTMB(
+  category_educated ~ s_phonological_model + s_semantic_model,
+  family = binomial,
+  data = label_preds
+)
 
-ggplot(pred_all, aes(x = x, y = predicted, colour = predictor, fill = predictor)) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.15, colour = NA) +
-  geom_line(linewidth = 1) +
-  theme_bw() +
-  ylim(0, 1) +
-  xlab("standardized value") +
-  ylab("p(back)") +
-  labs(colour = "predictor", fill = "predictor") +
-  scale_colour_colourblind() +
-  scale_fill_colourblind()
+# -- diagnostics -- #
 
-ggsave('viz/model_predictions_fit1.pdf', width = 4, height = 3)
-ggsave('~/Documents/latex/vh_krr_hun/viz/model_predictions_fit1.pdf', width = 4, height = 3)
+check_model(lfit4)
+check_model(lfit3)
+check_model(lfit2)
+check_model(lfit0)
+
+# -- tidy table -- #
+
+# basic indices
+lperf = compare_performance(lfit0, lfit2, lfit3, lfit4, metrics = "common") |>
+  as.data.frame() |>
+  select(Name, AIC, BIC)
+
+lr2 = r2(lfit2)
+lr3 = r2(lfit3)
+lr4 = r2(lfit4)
+
+bf_lfit4_vs = bind_rows(
+  get_bf_row2(test_bf(lfit2, lfit4), "lfit2", "BF_lfit4_vs"), 
+  get_bf_row2(test_bf(lfit3, lfit4), "lfit3", "BF_lfit4_vs")
+) |> 
+  mutate(
+    log_BF_lfit4_vs = log(BF_lfit4_vs)
+  ) |> 
+  select(Name,log_BF_lfit4_vs)
+
+lr_lfit4_vs = bind_rows(
+  get_stat_row2(test_likelihoodratio(lfit2, lfit4), "lfit2", "Chi2", "Chisq_lfit4_vs"),
+  get_stat_row2(test_likelihoodratio(lfit3, lfit4), "lfit3", "Chi2", "Chisq_lfit4_vs")
+)
+
+# join together
+l_summary_table = lperf |>
+  left_join(bf_lfit4_vs, by = "Name") |>
+  left_join(lr_lfit4_vs, by = "Name") |>
+  bind_cols(r2m = c(NA,lr2[[1]],lr3[[1]],lr4[[1]]))
+
+l_summary_table |> 
+  knitr::kable(digits = 2, 'latex') |> 
+  write_lines('glmm_comparisons_label_preds.txt')
+
+# -- coefs -- #
+
+broom.mixed::tidy(lfit2, conf.int = T) |> 
+  filter(effect == 'fixed') |> 
+  select(term,estimate,std.error,conf.low,conf.high) |> 
+  knitr::kable(digits = 2, 'latex') |> 
+  write_lines('best_glmm_coefs_label_preds.txt')

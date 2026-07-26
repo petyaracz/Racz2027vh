@@ -1,0 +1,14 @@
+
+\begin{tabular}{l|r|r|r|r|r}
+\hline
+Name & AIC & BIC & log\_BF\_lfit4\_vs & Chisq\_lfit4\_vs & r2m\\
+\hline
+lfit0 & 129.57 & 132.12 & NA & NA & NA\\
+\hline
+lfit2 & 104.99 & 110.08 & -0.83 & 2.89 & 0.26\\
+\hline
+lfit3 & 123.13 & 128.22 & 8.24 & 21.03 & 0.09\\
+\hline
+lfit4 & 104.10 & 111.73 & NA & NA & 0.28\\
+\hline
+\end{tabular}

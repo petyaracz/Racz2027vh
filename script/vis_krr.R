@@ -74,11 +74,10 @@ p0 = d |>
   geom_label_repel(
     data = d |> filter(stem %in% label_stems),
     aes(x = 0, label = stem),
-    size = 5,
+    size = 2.5,
     fill = 'lightgrey'
   ) +
-  scale_fill_viridis_c(option = 'H', guide = "none") +
-  scale_color_viridis_c(option = 'H', guide = "none") +
+  scale_fill_viridis_c(na.value = "grey90", direction = 1) +
   coord_flip() +
   xlab('') +
   scale_y_continuous(
@@ -87,6 +86,7 @@ p0 = d |>
     name = 'log (front / back)',
     breaks = c(-9:5)
   ) +
+  guides(fill="none",colour = 'none') +
   theme_few()
 
 p1 = detym |> 
@@ -94,28 +94,25 @@ p1 = detym |>
   ggplot(aes(y = borrowing_language)) +
   geom_bar() +
   theme_few() +
-  ylab('source language') +
-  ggtitle('Source language (n = 154)')
+  ylab('source language')
 
 p2 = detym |> 
   mutate(borrowing_period = borrowing_period |> fct_relevel('before 16th c') |> fct_rev()) |> 
   ggplot(aes(y = borrowing_period)) +
   geom_bar() +
   theme_few() +
-  ylab('first mention') +
-  ggtitle('First mention (n = 154)')
+  ylab('first mention')
 
 p3 = detym |> 
   ggplot(aes(x = first_mention)) +
   geom_histogram() +
   theme_few() +
-  facet_wrap( ~ borrowing_language, ncol = 1) +
+  facet_wrap( ~ borrowing_language, ncol = 2) +
   xlab('first mention') +
-  scale_y_continuous(breaks = c(1,3,5)) +
-  ggtitle('Source language and first mention (n = 108)')
+  scale_y_continuous(breaks = c(1,3,5))
 
-p0 / (p1 + p2) / p3 + plot_layout(heights = c(1,1,3))
-ggsave('viz/data_descriptive_stats.pdf', width = 6, height = 9)
+p0 / (p1 + p2) / p3 + plot_layout(heights = c(1,1,3)) + plot_annotation(tag_levels = 'i')
+ggsave('viz/data_descriptive_stats.pdf', width = 4, height = 8)
 ggsave('~/Documents/latex/vh_krr_hun/viz/data_descriptive_stats.pdf', width = 6, height = 9)
 
 ################################
@@ -130,7 +127,7 @@ p4 = d |>
   geom_label_repel(
     data = d |> filter(stem %in% label_stems),
     aes(label = stem),
-    size = 5,
+    size = 3,
     fill = 'lightgrey'
   ) +
   scale_fill_viridis_c(na.value = "grey90", direction = -1) +
@@ -151,7 +148,7 @@ p5 = d |>
   geom_label_repel(
     data = d |> filter(stem %in% label_stems),
     aes(label = stem),
-    size = 5,
+    size = 3,
     fill = 'lightgrey'
   ) +
   scale_fill_viridis_c(na.value = "grey90", direction = -1) +
@@ -206,7 +203,7 @@ p7 = d2 |>
   ) +
   ggtitle('distributional semantic space')
 
-((p4 + p5) + plot_layout(guides = 'collect') )/ p6 / p7 
+((p4 + p5) + plot_layout(guides = 'collect') )/ p6 / p7  + plot_annotation(tag_levels = 'i')
 
 ggsave('viz/mds_pref.pdf', width = 8.5, height = 9)
 ggsave('~/Documents/latex/vh_krr_hun/viz/mds_pref.pdf', width = 8.5, height = 9)
@@ -248,7 +245,7 @@ p9 = d_lang |>
   labs(colour = 'century') +
   ggtitle('distributional semantic space')
 
-p8 / p9 + plot_layout(guides = 'collect')
+p8 / p9 + plot_layout(guides = 'collect') + plot_annotation(tag_level = 'i')
 
 ggsave('viz/mds_lang.pdf', width = 8, height = 4.5)
 ggsave('~/Documents/latex/vh_krr_hun/viz/mds_lang.pdf', width = 8, height = 4.5)

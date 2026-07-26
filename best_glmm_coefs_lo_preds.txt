@@ -1,0 +1,12 @@
+
+\begin{tabular}{l|r|r|r|r}
+\hline
+term & estimate & std.error & conf.low & conf.high\\
+\hline
+(Intercept) & -9.52 & 0.52 & -10.53 & -8.51\\
+\hline
+s\_phonological\_model & 6.23 & 0.92 & 4.42 & 8.04\\
+\hline
+s\_semantic\_model & 6.75 & 0.83 & 5.12 & 8.37\\
+\hline
+\end{tabular}
