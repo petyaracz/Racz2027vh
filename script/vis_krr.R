@@ -10,7 +10,7 @@ library(patchwork)
 
 # -- read -- #
 
-d = read_tsv('dat/real_words_both_preds.tsv')
+d = read_tsv('dat/real_words_krr_lo_preds.tsv')
 
 # -- etym -- #
 
@@ -36,7 +36,7 @@ detym = d |>
 
 # -- words -- #
 
-label_stems = c('kódex', 'duett', 'szoftver',  'fotel', 'haver', 'fater', 'macesz')
+label_stems = c('kódex', 'duett', 'szoftver',  'fotel', 'haver', 'fater', 'macesz', 'matek', 'kolesz')
 
 # -- list -- #
 
@@ -67,7 +67,7 @@ d |>
 ################################
 
 p0 = d |>
-  ggplot(aes(y = -log_odds_back)) +
+  ggplot(aes(y = log_odds_back)) +
   geom_hline(aes(yintercept = 0), lty = 3) +
   geom_histogram(aes(fill = after_stat(y))) +
   geom_rug(aes(color = log_odds_back)) +
@@ -77,13 +77,13 @@ p0 = d |>
     size = 2.5,
     fill = 'lightgrey'
   ) +
-  scale_fill_viridis_c(na.value = "grey90", direction = 1) +
+  scale_fill_viridis_c(na.value = "grey90", direction = -1) +
   coord_flip() +
   xlab('') +
   scale_y_continuous(
     sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.001, 0.01, 0.1, 0.5, 0.9, 0.99),
-                        name = 'back →  front (p(front)'),
-    name = 'log (front / back)',
+                        name = 'front →  back p(back)'),
+    name = 'log (back / front)',
     breaks = c(-9:5)
   ) +
   guides(fill="none",colour = 'none') +
@@ -249,3 +249,53 @@ p8 / p9 + plot_layout(guides = 'collect') + plot_annotation(tag_level = 'i')
 
 ggsave('viz/mds_lang.pdf', width = 8, height = 4.5)
 ggsave('~/Documents/latex/vh_krr_hun/viz/mds_lang.pdf', width = 8, height = 4.5)
+
+# -- prediction plot -- #
+
+# phonological prediction on x, distributional prediction on y, points coloured by observed log odds
+p10 = d |> 
+  ggplot(aes(predicted_loo_phon,predicted_loo_sem, fill = log_odds_back)) +
+  geom_point(size = 3, pch = 21, alpha = .75) +
+  geom_label_repel(
+    data = d |> filter(stem %in% label_stems),
+    aes(label = stem),
+    size = 3,
+    fill = 'lightgrey'
+  ) +
+  scale_fill_viridis_c(na.value = "grey90", direction = -1) + 
+  theme_few() +
+  labs(
+    x = 'phonological similarity prediction',
+    y = 'distributional semantics prediction',
+    fill = 'log(back/front)'
+  ) +
+  theme(legend.position = 'top')
+
+# ... stratum label
+p11 = d |> 
+  ggplot(aes(predicted_loo_phon,predicted_loo_sem, fill = category_educated_other)) +
+  geom_point(size = 3, pch = 21, alpha = .75) +
+  geom_label_repel(
+    data = d |> filter(stem %in% label_stems),
+    aes(label = stem),
+    size = 3,
+    fill = 'lightgrey'
+  ) +
+  scale_fill_viridis_d(na.value = "grey90", direction = -1, option = 'H') + 
+  theme_few() +
+  labs(
+    x = 'phonological similarity prediction',
+    y = 'distributional semantics prediction',
+    fill = 'lexical stratum'
+  ) +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.position = 'top'
+        )
+
+p10 + p11 + plot_layout(axes = 'collect')
+
+ggsave('viz/predictions.pdf', width = 8, height = 4.5)
+ggsave('~/Documents/latex/vh_krr_hun/viz/predictions.pdf', width = 8, height = 4.5)
