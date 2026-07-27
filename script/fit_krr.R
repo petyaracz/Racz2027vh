@@ -164,6 +164,12 @@ real_words_semantic_l_2 = real_words_sem_label |>
 
 real_words_joined_l = inner_join(real_words_phon_l_2,real_words_semantic_l_2)
 
+# -- parameters -- #
+
+m_phon
+m_sem
+m_phon_label_1
+m_sem_label_1
 
 # -- write -- #
 
