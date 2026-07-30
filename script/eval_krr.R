@@ -1,7 +1,6 @@
 # -- head -- #
 
 set.seed(1337)
-setwd('~/Github/Racz2027vh/')
 library(tidyverse)
 library(glmmTMB)
 library(ggthemes)
@@ -9,11 +8,12 @@ library(ggeffects)
 library(performance)
 library(sjPlot)
 library(patchwork)
+library(here)
 
 # -- read -- #
 
-lo_preds = read_tsv('dat/real_words_krr_lo_preds.tsv')
-label_preds = read_tsv('dat/real_words_krr_label_preds.tsv')
+lo_preds = read_tsv(here('dat', 'real_words_krr_lo_preds.tsv'))
+label_preds = read_tsv(here('dat', 'real_words_krr_label_preds.tsv'))
 
 # -- glm setup -- #
 

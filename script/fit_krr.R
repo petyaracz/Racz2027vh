@@ -4,20 +4,11 @@
 # -- head -- #
 
 set.seed(1337)
-setwd('~/Github/Racz2027vh/')
 library(tidyverse)
 library(krr)
+library(here)
 
 # -- functions -- #
-
-# Hungarian orthography to IPA-like transcription for distance lookup
-transcribeIPA = function(dat) {
-  dat |> stringr::str_replace_all(c(
-    'x' = 'ks', 'cs' = 'č', 'zs' = 'ž', 'ty' = 'ṯ', 'gy' = 'ḏ',
-    'ny' = 'ṉ', 'sz' = 'ß', 's' = 'š', 'ß' = 's', 'ck' = 'kk',
-    'codec' = 'kodek', 'ch' = 'h', 'ly' = 'j'
-  ))
-}
 
 # Build square symmetric matrix from long format, run cmdscale k=2, return tibble with word x y
 do_mds = function(dist_df, dist_col = 'phon_dist') {
@@ -35,9 +26,9 @@ do_mds = function(dist_df, dist_col = 'phon_dist') {
 
 # -- read -- #
 
-train = read_tsv('dat/real_words.tsv') # output of dat_setup.R
-ph_dist = read_tsv('dat/word_distances.tsv.gz')
-s_dist = read_tsv('dat/semantic_distances_ignore_colname.tsv')
+train = read_tsv(here('dat', 'real_words.tsv')) # output of dat_setup.R
+ph_dist = read_tsv(here('dat', 'word_distances.tsv.gz'))
+s_dist = read_tsv(here('dat', 'semantic_distances_ignore_colname.tsv'))
 
 # -- filter for label fit -- #
 
@@ -173,5 +164,5 @@ m_sem_label_1
 
 # -- write -- #
 
-write_tsv(real_words_joined, 'dat/real_words_krr_lo_preds.tsv')
-write_tsv(real_words_joined_l, 'dat/real_words_krr_label_preds.tsv')
+write_tsv(real_words_joined, here('dat', 'real_words_krr_lo_preds.tsv'))
+write_tsv(real_words_joined_l, here('dat', 'real_words_krr_label_preds.tsv'))

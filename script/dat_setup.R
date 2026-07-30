@@ -2,18 +2,17 @@
 
 # -- head -- #
 
-setwd('~/Github/Racz2027vh/')
-
 library(tidyverse)
 library(glue)
+library(here)
 
 # -- read -- #
 
-d = read_tsv('dat/dzsungel.tsv')
-e = read_csv('dat/entries_hand_edited.csv')
-raw = read_csv('dat/entries_raw.csv')
-ph_dist = read_tsv('dat/word_distances.tsv.gz')
-s_dist = read_tsv('dat/semantic_distances_ignore_colname.tsv')
+d = read_tsv(here('dat', 'dzsungel.tsv'))
+e = read_csv(here('dat', 'entries_hand_edited.csv'))
+raw = read_csv(here('dat', 'entries_raw.csv'))
+ph_dist = read_tsv(here('dat', 'word_distances.tsv.gz'))
+s_dist = read_tsv(here('dat', 'semantic_distances_ignore_colname.tsv'))
 
 # -- this is bad sorry -- #
 
@@ -127,4 +126,4 @@ d4 = d3 |> # incredible consistencies all over
 
 # -- write -- #
 
-write_tsv(d4, 'dat/real_words.tsv')
+write_tsv(d4, here('dat', 'real_words.tsv'))

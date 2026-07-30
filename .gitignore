@@ -1,3 +1,14 @@
+# large inputs not redistributed here (see Readme for sources)
 hunembed0.0.tgz
 uesz
+
+# editor / tooling
 .claude
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+Rplots.pdf
+
+# macOS
+.DS_Store

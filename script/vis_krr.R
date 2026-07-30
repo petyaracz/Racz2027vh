@@ -1,16 +1,16 @@
 # -- head -- #
 
 set.seed(1337)
-setwd('~/Github/Racz2027vh/')
 library(tidyverse)
 library(glue)
 library(ggthemes)
 library(ggrepel)
 library(patchwork)
+library(here)
 
 # -- read -- #
 
-d = read_tsv('dat/real_words_krr_lo_preds.tsv')
+d = read_tsv(here('dat', 'real_words_krr_lo_preds.tsv'))
 
 # -- etym -- #
 
@@ -75,14 +75,17 @@ p0 = d |>
     data = d |> filter(stem %in% label_stems),
     aes(x = 0, label = stem),
     size = 2.5,
-    fill = 'lightgrey'
+    fill = 'lightgrey',
+    min.segment.length = 0
   ) +
   scale_fill_viridis_c(na.value = "grey90", direction = -1) +
   coord_flip() +
   xlab('') +
   scale_y_continuous(
+    # ASCII arrow: the default pdf device cannot encode U+2192, and cairo_pdf
+    # needs XQuartz, so a Unicode arrow does not survive a headless Rscript run
     sec.axis = sec_axis(trans = ~ plogis(.), breaks = c(0.001, 0.01, 0.1, 0.5, 0.9, 0.99),
-                        name = 'front →  back p(back)'),
+                        name = 'front -> back  p(back)'),
     name = 'log (back / front)',
     breaks = c(-9:5)
   ) +
@@ -112,8 +115,7 @@ p3 = detym |>
   scale_y_continuous(breaks = c(1,3,5))
 
 p0 / (p1 + p2) / p3 + plot_layout(heights = c(1,1,3)) + plot_annotation(tag_levels = 'i')
-ggsave('viz/data_descriptive_stats.pdf', width = 4, height = 8)
-ggsave('~/Documents/latex/vh_krr_hun/viz/data_descriptive_stats.pdf', width = 6, height = 9)
+ggsave(here('viz', 'data_descriptive_stats.pdf'), width = 4, height = 8)
 
 ################################
 # MDS maps
@@ -149,7 +151,8 @@ p5 = d |>
     data = d |> filter(stem %in% label_stems),
     aes(label = stem),
     size = 3,
-    fill = 'lightgrey'
+    fill = 'lightgrey',
+    min.segment.length = 0
   ) +
   scale_fill_viridis_c(na.value = "grey90", direction = -1) +
   theme_few() +
@@ -205,8 +208,7 @@ p7 = d2 |>
 
 ((p4 + p5) + plot_layout(guides = 'collect') )/ p6 / p7  + plot_annotation(tag_levels = 'i')
 
-ggsave('viz/mds_pref.pdf', width = 8.5, height = 9)
-ggsave('~/Documents/latex/vh_krr_hun/viz/mds_pref.pdf', width = 8.5, height = 9)
+ggsave(here('viz', 'mds_pref.pdf'), width = 8.5, height = 9)
 
 # bottom rows, source language clustering, restricted to the four languages
 # with enough words to say anything about; grey backdrop = full word set for
@@ -247,8 +249,7 @@ p9 = d_lang |>
 
 p8 / p9 + plot_layout(guides = 'collect') + plot_annotation(tag_level = 'i')
 
-ggsave('viz/mds_lang.pdf', width = 8, height = 4.5)
-ggsave('~/Documents/latex/vh_krr_hun/viz/mds_lang.pdf', width = 8, height = 4.5)
+ggsave(here('viz', 'mds_lang.pdf'), width = 8, height = 4.5)
 
 # -- prediction plot -- #
 
@@ -260,7 +261,8 @@ p10 = d |>
     data = d |> filter(stem %in% label_stems),
     aes(label = stem),
     size = 3,
-    fill = 'lightgrey'
+    fill = 'lightgrey',
+    min.segment.length = 0
   ) +
   scale_fill_viridis_c(na.value = "grey90", direction = -1) + 
   theme_few() +
@@ -279,7 +281,8 @@ p11 = d |>
     data = d |> filter(stem %in% label_stems),
     aes(label = stem),
     size = 3,
-    fill = 'lightgrey'
+    fill = 'lightgrey',
+    min.segment.length = 0
   ) +
   scale_fill_viridis_d(na.value = "grey90", direction = -1, option = 'H') + 
   theme_few() +
@@ -297,5 +300,4 @@ p11 = d |>
 
 p10 + p11 + plot_layout(axes = 'collect')
 
-ggsave('viz/predictions.pdf', width = 8, height = 4.5)
-ggsave('~/Documents/latex/vh_krr_hun/viz/predictions.pdf', width = 8, height = 4.5)
+ggsave(here('viz', 'predictions.pdf'), width = 8, height = 4.5)

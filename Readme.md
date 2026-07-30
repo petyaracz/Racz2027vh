@@ -2,104 +2,126 @@
 
 Code and data for a paper on vowel harmony in Hungarian loanwords using kernel ridge regression (KRR).
 
-Hungarian loanwords with neutral vowels show variable back/front suffix selection (e.g. *hotelnak* vs *hotelnek*). The project tests whether phonological or semantic similarity to words with stable harmony predicts this variation, using KRR models trained on corpus counts, evaluated with GLMMs and visualised against etymology.
+Hungarian loanwords with neutral vowels show variable back/front suffix selection (e.g. *hotelnak* vs *hotelnek*). The project tests whether phonological or distributional-semantic similarity to other loanwords predicts this variation, and whether either similarity space also recovers the etymological stratum (educated Latin/French vs colloquial German/Yiddish). Models are fitted with KRR under leave-one-out cross-validation and evaluated with GLMMs against corpus counts.
 
-Word embeddings: http://corpus.nytud.hu/efnilex-vect/
+## Running the code
 
-Word frequencies: https://github.com/petyaracz/Webcorpus2FrequencyList
+Scripts resolve paths with the [`here`](https://here.r-lib.org/) package, so they can be run from anywhere in the repo without editing them. The repo root is marked by the `.here` file.
+
+```r
+source('script/dat_setup.R')
+source('script/fit_krr.R')
+source('script/eval_krr.R')
+source('script/vis_krr.R')
+```
+
+or from a shell at the repo root:
+
+```sh
+Rscript script/dat_setup.R
+Rscript script/fit_krr.R
+Rscript script/eval_krr.R
+Rscript script/vis_krr.R
+```
+
+`eval_krr.R` prints its model comparison and coefficient tables to the console as LaTeX; it writes no files. `vis_krr.R` writes four PDFs into `viz/`. Running the pipeline reproduces every tracked file in `dat/` byte for byte.
+
+### Environment
+
+Built and checked under R 4.5.2. All packages are on CRAN except `krr`, which is a companion package:
+
+```r
+remotes::install_github('petyaracz/KRR')
+```
+
+| package | version |
+|---|---|
+| tidyverse | 2.0.0 |
+| here | 1.0.2 |
+| glue | 1.8.1 |
+| krr | 0.1.0 |
+| glmmTMB | 1.1.14 |
+| performance | 0.17.0 |
+| MuMIn | 1.48.19 |
+| broom.mixed | 0.2.9.7 |
+| ggeffects | 2.3.2 |
+| sjPlot | 2.9.0 |
+| ggthemes | 5.2.0 |
+| ggrepel | 0.9.8 |
+| patchwork | 1.3.2 |
+| knitr | 1.51 |
+| scales | 1.4.0 |
+
+The two prep scripts are Python and need `requests` and `pdfplumber` (`uesz_scrape.py`), and `numpy` (`get_semantic_distances.py`).
+
+Seeds are set to 1337 in every script that needs one. Figures avoid non-ASCII glyphs in axis labels, since the default R `pdf` device cannot encode them and `cairo_pdf` needs XQuartz.
+
+### External inputs not redistributed here
+
+- Word embeddings: http://corpus.nytud.hu/efnilex-vect/ (`hunembed0.0.tgz`, needed only to re-run `get_semantic_distances.py`)
+- Word frequencies: https://github.com/petyaracz/Webcorpus2FrequencyList
+- UESz letter-PDFs, needed only to re-run `uesz_scrape.py`
+
+The outputs of both prep steps are tracked in `dat/`, so the main pipeline runs without either.
+
+## Provenance of `dat/dzsungel.tsv`
+
+`dat/dzsungel.tsv` is the root input and is supplied as-is. It was built in an earlier project from the stem-level corpus table of [RaczRebrus2024](https://github.com/petyaracz/RaczRebrus2024) (`dat/dat_wide_stems.tsv`), by keeping only stems that vary in suffix choice (`stem_varies`), excluding `komplett`, and adding an IPA-like `transcribed` column and `p_back = plogis(log_odds_back)`.
+
+Two consequences worth knowing. The 162 stems are already restricted to *variable* stems, so the modelling set is not a random sample of loanwords. And `dat_setup.R` hand-flags `komplett`, `korrekt` and `ómen` for removal, but only `ómen` is actually present: `komplett` was excluded at this earlier stage, so two of the three entries are inert leftovers rather than active filters.
 
 ## Pipeline
 
-Data prep, already run once, outputs tracked in `dat/`:
+Prep, already run once, outputs tracked in `dat/`:
 
-- `script/uesz_scrape.py` — pulls etymology entries for the loanword list from the Új magyar etimológiai szótár (UESz) letter-PDFs; raw output is `dat/entries_raw.csv`, hand-corrected into `dat/entries_hand_edited.csv`
+- `script/uesz_scrape.py` — pulls etymology entries for the loanword list from the Új magyar etimológiai szótár (UESz) letter-PDFs into `dat/entries_raw.csv`, hand-corrected into `dat/entries_hand_edited.csv`
 - `script/get_semantic_distances.py` — pairwise cosine distances between loanwords from word embeddings; writes `dat/semantic_distances.csv`
-- `script/complete_semantic_distances.R` — reshapes `dat/semantic_distances.csv` into the long, symmetric format KRR needs; writes `dat/semantic_distances_ignore_colname.tsv`
+- `script/complete_semantic_distances.R` — reshapes those into the long, symmetric form KRR needs; writes `dat/semantic_distances_ignore_colname.tsv`
 
 Main pipeline, run in order:
 
-1. `script/uesz_setup.R` — joins etymology onto `dat/dzsungel.tsv`, overwriting it in place: source language, first-attestation year and derived borrowing period/label/category from the hand-edited `dat/entries_hand_edited.csv`, plus the original (pre-edit) source-language string and an "international word" flag recovered from `dat/entries_raw.csv`
-2. `script/fit_krr.R` — fits KRR models (phonological and semantic kernels) on real loanwords with leave-one-out cross-validation; writes predictions and MDS coordinates to `dat/`, including the phonological/semantic predictions joined into `dat/real_words_both_preds.tsv`
-3. `script/eval_krr.R` — fits GLMMs comparing phonological vs semantic vs combined predictors against corpus counts; writes a model comparison table to `glmm_comparisons.txt` and a predicted-probability figure to `viz/model_predictions_fit1.pdf`
-4. `script/vis_krr.R` — MDS and observation-space figures; writes `viz/obs_spaces.png` (some figures are saved outside the repo, into a companion LaTeX project)
-
-Dormant / archival (not part of the current pipeline; kept for reference):
-
-- `real_word_exp/`, `dat/*_real_word.tsv` — real-word suffix-selection experiment. Data collected and parsed, but no longer modelled by `eval_krr.R`/`vis_krr.R`.
-- `non_word_exp/`, `dat/*_nonword.tsv` — nonword suffix-selection experiment, retired. `fit_krr.R` still fits a nonword KRR model from `dat/filtered_data_nonword.tsv` and writes `dat/nonwords_phon_preds.tsv`, kept for the desk drawer in case the experiment is revived; nothing downstream reads it.
-- `dzsungel/` — earlier exploratory setup/visualisation scripts, superseded by `uesz_setup.R` and `vis_krr.R`; reference an external repo (`RaczRebrus2024`) and won't run standalone.
-- `script/docens.R` — figures for a talk, reproducible from tracked data.
-- `script/parse_results.R`, `script/check_results.R` — parsing/sanity checks for the experiment trial data.
+1. `script/dat_setup.R` — joins etymology from `dat/entries_hand_edited.csv` and `dat/entries_raw.csv` onto `dat/dzsungel.tsv`, drops hand-flagged stems and any stem missing from either distance matrix; writes `dat/real_words.tsv` (154 rows)
+2. `script/fit_krr.R` — fits four KRR models under leave-one-out cross-validation, tuning sigma and alpha on a grid: log-odds and stratum label, each against a phonological and a semantic kernel. Also runs classical MDS on both distance matrices. Writes `dat/real_words_krr_lo_preds.tsv` and `dat/real_words_krr_label_preds.tsv`
+3. `script/eval_krr.R` — GLMMs (`glmmTMB`) comparing phonological vs semantic vs combined predictors, for both the stratum label (m1–m4, binomial) and the corpus back/front counts (m5–m10, binomial with a by-stem random intercept). Prints comparison and coefficient tables
+4. `script/vis_krr.R` — descriptive, MDS and prediction figures; writes the four PDFs in `viz/`
 
 ## Files
 
 ```
 script/
   uesz_scrape.py                 Scrapes UESz etymology entries (prep)
-  get_semantic_distances.py      Pairwise semantic distances from word embeddings (prep)
+  get_semantic_distances.py      Pairwise semantic distances from embeddings (prep)
   complete_semantic_distances.R  Reshapes semantic distances for KRR (prep)
-  uesz_setup.R                   Joins etymology onto dzsungel.tsv
-  fit_krr.R                      KRR model fitting and prediction
+  dat_setup.R                    Builds the modelling table
+  fit_krr.R                      KRR fitting, LOO prediction, MDS
   eval_krr.R                     GLMM model comparison
-  vis_krr.R                      MDS and observation-space figures
-  docens.R                       Figures for a talk
-  parse_results.R                Parses raw experimental results
-  check_results.R                Sanity checks on results
-
-non_word_exp/
-  generate_non_words.R           Nonword stimulus generation (v1), archival
-  generate_non_words_updated.R   Nonword stimulus generation (v2), archival
-
-real_word_exp/
-  make_reaLwords.R               Real-word stimulus generation, archival
-  parse_exp.R                    Parses real-word experiment output, archival
-  dat/unfiltered_data.tsv        Raw real-word experiment output
-
-dzsungel/
-  script/setup.R                 Earlier setup for the Dzsungel corpus subset, archival
-  script/viz.R                   Earlier visualisations, archival
-  dat/dzsungel_forms.tsv         Loanword forms
-  dat/dzsungel_pred.tsv          Predictions for the Dzsungel subset
+  vis_krr.R                      Figures
 
 dat/
-  dzsungel.tsv                   Training set: 163 loanwords with corpus back/front counts and etymology
-  entries_hand_edited.csv        Hand-edited UESz etymology entries
-  entries_raw.csv                Unedited uesz_scrape.py output (same words, pre-correction)
-  word_distances.tsv.gz          Pairwise phonological distances (IPA-transcribed forms)
+  dzsungel.tsv                   Source table: 162 loanwords, corpus back/front counts
+  entries_hand_edited.csv        Hand-corrected UESz etymology entries
+  entries_raw.csv                Unedited uesz_scrape.py output
+  word_distances.tsv.gz          Pairwise phonological distances (IPA-transcribed)
   semantic_distances.csv         Pairwise semantic distances (raw)
-  semantic_distances_ignore_colname.tsv  Semantic distances in long format for KRR
-  real_words_phon_preds.tsv      KRR LOO predictions, phonological kernel, real words
-  real_words_semantic_preds.tsv  KRR LOO predictions, semantic kernel, real words
-  real_words_both_preds.tsv      Phonological and semantic predictions joined, one row per word
-  nonwords_phon_preds.tsv        KRR predictions, phonological kernel, nonwords (dormant, see Pipeline)
-  train_test_forms.tsv           Lemma list
-  filtered_data_real_word.tsv    Filtered trial data, real-word experiment (dormant)
-  filtered_data_nonword.tsv      Filtered trial data, nonword experiment (dormant)
-  unfiltered_data_real_word.tsv  Raw trial data, real-word experiment (dormant)
-  unfiltered_data_nonword.tsv    Raw trial data, nonword experiment (dormant)
-  master.tsv                     Full stimulus file with jsPsych trial fields
-  baseline_tidy_proc.tsv         Baseline nonce-word response data, legacy
-  gcm_param_search.tsv           GCM parameter search output, legacy
-  siptar_torkenczy_toth_racz_hungarian.tsv  Hungarian phonological inventory reference
-  stim.js                        jsPsych stimulus file
+  semantic_distances_ignore_colname.tsv  Semantic distances, long format for KRR
+  real_words.tsv                 Modelling table, output of dat_setup.R
+  real_words_krr_lo_preds.tsv    KRR LOO predictions, log-odds outcome
+  real_words_krr_label_preds.tsv KRR LOO predictions, stratum-label outcome
 
 viz/
-  obs_spaces.png                 Phonological/semantic MDS density by etymology, current output of vis_krr.R
-  model_predictions_fit1.pdf     Predicted p(back) by phonological/semantic similarity, current output of eval_krr.R
-
-glmm_comparisons.txt             Model comparison table (AIC/BIC/RMSE/R2/Bayes factors), current output of eval_krr.R
-corpus_loo.tsv                   LOO comparison for Bayesian corpus models (b1–b3), legacy
-exp_loo.tsv                      LOO comparison for Bayesian experiment models (b4–b6), legacy
-methods_gcm.tex                  Draft methods write-up for a GCM analysis; the fitting script has been removed, kept unfinished ("[TO FILL IN]") for reference
+  data_descriptive_stats.pdf     Outcome distribution and etymology breakdown
+  mds_pref.pdf                   MDS spaces, and density by suffix-preference bin
+  mds_lang.pdf                   MDS spaces, density by source language
+  predictions.pdf                Phonological vs semantic prediction, two colourings
 ```
+
+An earlier version of this project also ran two suffix-selection experiments, with real words and with nonwords. Neither is reported in the paper and neither is included here.
 
 ## Data dictionary
 
-`eval_krr.R` and `vis_krr.R` currently read only `dat/real_words_both_preds.tsv`; the other files below are intermediate or dormant, kept here for reference.
-
 ### `dat/dzsungel.tsv`
 
-163 rows (one per loanword; `fit_krr.R` drops 2 known-bad stems before fitting). Corpus-derived back/front counts plus etymology, produced by `uesz_setup.R` from `dat/entries_hand_edited.csv` and `dat/entries_raw.csv`. Read by `fit_krr.R`.
+162 rows, one per loanword. See *Provenance* above.
 
 | column | description |
 |--------|-------------|
@@ -108,109 +130,61 @@ methods_gcm.tex                  Draft methods write-up for a GCM analysis; the 
 | `front` | corpus count of front-suffix forms |
 | `log_odds_back` | log((back + 0.001) / (front + 0.001)) |
 | `stem_freq` | total corpus frequency |
-| `stem_varies` | whether the stem shows both back and front forms |
+| `stem_varies` | whether the stem shows both back and front forms. TRUE throughout, by construction |
 | `sd_back` | standard deviation of back proportion across corpus instances |
-| `transcribed` | IPA-like transcription used for distance lookup |
+| `transcribed` | IPA-like transcription, the key into `word_distances.tsv.gz` |
 | `p_back` | proportion of back-suffix forms |
-| `international` | whether the raw UESz entry was tagged "nemzetközi" (international) |
-| `note` | `"international word"` when `international` is TRUE, else `NA` |
-| `borrowing_language` | source language, from the hand-edited UESz entries (German, English, French, Latin, Yiddish) |
-| `borrowing_period` | first-attestation century bucket: `before 16th c`, `16th c`, `17th c`, `18th c`, `19th c`, `20th c` |
-| `borrowing_label` | German/English also split by period (e.g. `German; 19th c`); French/Latin/Yiddish unsplit |
-| `borrowing_category` | `German/Yiddish` vs `French/Latin`, or `NA` |
-| `first_mention` | first-attestation year (numeric), from `dat/entries_hand_edited.csv` |
-| `borrowing_original` | unedited source-language string from `dat/entries_raw.csv` |
 
-### `dat/real_words_phon_preds.tsv`
+The file also carries etymology columns from an earlier run. `dat_setup.R` drops and recomputes all of them, so they are vestigial; the authoritative versions are in `real_words.tsv`.
 
-162 rows. KRR fitted with a phonological distance kernel, leave-one-out predictions. Intermediate output of `fit_krr.R`, joined into `real_words_both_preds.tsv`; not read separately downstream. Same columns as `dzsungel.tsv` plus:
+### `dat/real_words.tsv`
+
+154 rows. Output of `dat_setup.R`, input to `fit_krr.R`. Rows are the 162 stems of `dzsungel.tsv`, less `ómen` (hand-flagged) and the 7 stems with no entry in one of the two distance matrices. Columns as `dzsungel.tsv` plus:
 
 | column | description |
 |--------|-------------|
-| `predicted_loo` | KRR LOO prediction on the log-odds scale |
-| `phonological_x` | MDS dimension 1 of phonological distance space |
-| `phonological_y` | MDS dimension 2 of phonological distance space |
-| `sigma` | KRR bandwidth hyperparameter |
-| `alpha` | KRR regularisation hyperparameter |
-| `rmse` | LOO RMSE of the fitted model |
+| `borrowing_language` | source language from the hand-edited UESz entries: German, English, French, Latin, Yiddish, else `other` |
+| `borrowing_period` | first-attestation bucket: `before 16th c`, `16th c` … `20th c`, else `unknown` |
+| `borrowing_label` | German and English split by period (e.g. `German; 19th c`); French, Latin, Yiddish unsplit |
+| `borrowing_category` | `French/Latin (educated)` vs `German/Yiddish (colloquial)`, else `NA` |
+| `category_educated` | logical, `borrowing_category == 'French/Latin (educated)'`. The outcome of the label models |
+| `category_educated_other` | three-way version: `educated`, `colloquial`, `other` |
+| `first_mention` | first-attestation year, numeric |
+| `borrowing_original` | unedited source-language string from `entries_raw.csv` |
+| `international` | logical, raw UESz entry tagged *nemzetközi* |
+| `note` | `"international word"` where `international` is TRUE, else `NA` |
+| `international2` | as `note`, empty string instead of `NA` |
+| `stem_log10_freq` | log10(stem_freq / 9000), a per-million-ish scaling of a roughly 9 billion word corpus |
+| `n1`, `n2` | group sizes by `borrowing_language` and `borrowing_period` |
+| `borrowing_language2`, `borrowing_period2` | those two labels with `(n = …)` appended, for plot facets |
 
-### `dat/real_words_semantic_preds.tsv`
+### `dat/real_words_krr_lo_preds.tsv`
 
-154 rows (real words with word-embedding coverage). KRR fitted with a semantic distance kernel, leave-one-out predictions. Intermediate output of `fit_krr.R`, joined into `real_words_both_preds.tsv`; not read separately downstream. Columns as above except `semantic_x`/`semantic_y` replace `phonological_x`/`phonological_y`.
-
-### `dat/real_words_both_preds.tsv`
-
-154 rows. Inner join of the two prediction files above on `stem`, `sigma`/`alpha`/`rmse` dropped, `predicted_loo` renamed to `predicted_loo_phon`/`predicted_loo_sem`. Written by `fit_krr.R`; this is the only file `eval_krr.R` and `vis_krr.R` read.
-
-### `dat/nonwords_phon_preds.tsv`
-
-50 rows (one per nonword). KRR trained on real words, applied to held-out nonwords. Still produced by `fit_krr.R` for the desk drawer; not consumed by `eval_krr.R` or `vis_krr.R`.
-
-| column | description |
-|--------|-------------|
-| `stem` | orthographic nonword stem |
-| `transcribed` | IPA-like transcription |
-| `n_front` | experimental count of front-suffix acceptances |
-| `n_back` | experimental count of back-suffix acceptances |
-| `log_odds_back` | log((n_back + 0.001) / (n_front + 0.001)) |
-| `predicted` | KRR prediction on the log-odds scale |
-| `phonological_x` | MDS dimension 1 (full distance matrix including nonwords) |
-| `phonological_y` | MDS dimension 2 |
-| `sigma` | KRR bandwidth hyperparameter |
-| `alpha` | KRR regularisation hyperparameter |
-| `rmse` | LOO RMSE of the real-word model |
-
-### `dat/unfiltered_data_real_word.tsv`
-
-2500 rows (one per trial). Trial-level data from the real-word suffix-selection experiment. Dormant: not read by `fit_krr.R`, `eval_krr.R` or `vis_krr.R`; still read by `script/docens.R` and `script/check_results.R`.
+154 rows. All columns of `real_words.tsv` plus:
 
 | column | description |
 |--------|-------------|
-| `id` | participant ID |
-| `yob` | year of birth |
-| `age` | age |
-| `gender` | gender |
-| `total_time` | total experiment time (ms) |
-| `i` | trial index |
-| `stem` | target stem |
-| `target` | inflected form presented |
-| `suffix` | suffix type (e.g. Dat, Pl) |
-| `accept` | whether participant accepted the form (TRUE/FALSE) |
-| `rt` | reaction time (ms) |
-| `language` | source language of the stem |
-| `log_odds_adj` | log odds of back suffix from corpus (adjusted) |
-| `neighbourhood_size` | phonological neighbourhood size |
-| `llfpm10` | log lemma frequency per 10 million |
-| `stem_length` | stem length in characters |
-| `stem_final` | final segment of the stem |
-| `stem_phonology` | phonological class of stem-final segment |
-| `stem_final_consonant_cluster` | consonant cluster size at stem end |
-| `log_odds_back_suffix` | log odds of the specific back suffix form |
-| `upper_time` | upper RT boundary |
-| `lower_time` | lower RT boundary |
-| `date` | trial timestamp |
-| `transcription` | IPA-like transcription |
-| `svm_weight_01` | SVM model weight (C=0.1) |
-| `svm_weight_1` | SVM model weight (C=1) |
-| `knn_2_weight` | k-NN (k=2) model weight |
-| `yi_la_weight` | Yiddish/Latin neighbourhood weight |
-| `x_phon` | phonological MDS dimension 1 |
-| `y_phon` | phonological MDS dimension 2 |
+| `predicted_loo_phon` | KRR LOO prediction of `log_odds_back` from the phonological kernel |
+| `predicted_loo_sem` | same from the semantic kernel |
+| `phonological_x`, `phonological_y` | classical MDS coordinates of the phonological distance matrix, rescaled to [0, 1] |
+| `semantic_x`, `semantic_y` | same for the semantic distance matrix |
 
-### `dat/unfiltered_data_nonword.tsv`
+### `dat/real_words_krr_label_preds.tsv`
 
-2700 rows (one per trial). Trial-level data from the nonword suffix-selection experiment. Dormant: not read by `fit_krr.R`, `eval_krr.R` or `vis_krr.R`; still read by `script/docens.R`, `script/parse_results.R` and `script/check_results.R`.
+94 rows, the subset of `real_words.tsv` with a non-missing `category_educated`. All columns of `real_words.tsv` plus:
 
 | column | description |
 |--------|-------------|
-| `id` | participant ID |
-| `yob` | year of birth |
-| `age` | age |
-| `gender` | gender |
-| `total_time` | total experiment time (ms) |
-| `i` | trial index |
-| `target` | nonword form presented |
-| `accept` | whether participant accepted the form (TRUE/FALSE) |
-| `rt` | reaction time (ms) |
-| `upper_time` | upper RT boundary |
-| `lower_time` | lower RT boundary |
+| `observed` | observed `category_educated`, as returned by the fit |
+| `predicted_loo_phon` | KRR LOO prediction of `category_educated` from the phonological kernel, on [0, 1] |
+| `predicted_phon` | `predicted_loo_phon >= 0.5` |
+| `predicted_loo_sem`, `predicted_sem` | same for the semantic kernel |
+| `phonological_x`, `phonological_y`, `semantic_x`, `semantic_y` | MDS coordinates, as above |
+
+### `dat/word_distances.tsv.gz` and `dat/semantic_distances_ignore_colname.tsv`
+
+Long-format pairwise distance tables, columns `word1`, `word2`, `phon_dist`. Both are symmetric and include the zero diagonal, which is what `krr` expects. `word_distances.tsv.gz` is keyed on `transcribed`, the semantic table on `stem`. The `phon_dist` column name in the semantic file is a misnomer retained for compatibility with `krr`, hence the file name.
+
+## Licence
+
+MIT, see `LICENSE`.

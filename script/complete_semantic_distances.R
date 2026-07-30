@@ -1,6 +1,7 @@
 library(tidyverse)
+library(here)
 
-s_dist = read_csv('dat/semantic_distances.csv')
+s_dist = read_csv(here('dat', 'semantic_distances.csv'))
 
 s_dist = s_dist |> 
   mutate(phon_dist = semantic_distance)
@@ -10,4 +11,4 @@ s_dist2 = tibble(word1 = unique(s_dist$word1),word2 = unique(s_dist$word1)) |>
 s_dist3 = tibble(word1 = s_dist$word2, word2 = s_dist$word1, phon_dist = s_dist$phon_dist)
 s_dist_final = bind_rows(s_dist,s_dist2,s_dist3)
 
-write_tsv(s_dist_final, 'dat/semantic_distances_ignore_colname.tsv')
+write_tsv(s_dist_final, here('dat', 'semantic_distances_ignore_colname.tsv'))
