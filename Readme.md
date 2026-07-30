@@ -34,6 +34,12 @@ Built and checked under R 4.5.2. All packages are on CRAN except `krr`, which is
 remotes::install_github('petyaracz/KRR')
 ```
 
+`janet` is needed only to regenerate the phonological distances, not to run the pipeline:
+
+```r
+remotes::install_github('petyaracz/JANET')
+```
+
 | package | version |
 |---|---|
 | tidyverse | 2.0.0 |
@@ -70,11 +76,22 @@ The outputs of both prep steps are tracked in `dat/`, so the main pipeline runs 
 
 Two consequences worth knowing. The 162 stems are already restricted to *variable* stems, so the modelling set is not a random sample of loanwords. And `dat_setup.R` hand-flags `komplett`, `korrekt` and `ómen` for removal, but only `ómen` is actually present: `komplett` was excluded at this earlier stage, so two of the three entries are inert leftovers rather than active filters.
 
+## Provenance of the distance matrices
+
+Both distance matrices ship with the repo, so the main pipeline runs without regenerating either.
+
+**Phonological** (`dat/word_distances.tsv.gz`). Distances are alignment-based, computed by [janet](https://github.com/petyaracz/JANET) with `gap_penalty = 1.0` over the binary phonological feature matrix in `dat/siptar_torkenczy_toth_racz_hungarian.tsv`. Words are keyed on the IPA-like `transcribed` form, not orthography. To see exactly how, read `script/get_phon_distances.R`.
+
+One caveat if you re-run that script. The shipped matrix covers 213 words: the 162 loanword stems plus 51 nonwords from an experiment that is not reported in the paper. `get_phon_distances.R` builds the loanword half only, so it produces a 162-word matrix rather than an identical copy of the shipped file. This does not change any result: the pipeline only ever uses loanword stems, all 162 are present either way, and the phonological filter in `dat_setup.R` drops nothing (all 7 stems it removes are dropped for missing *semantic* coverage). Because janet scores each pair independently, the 162-word submatrix is the same in both.
+
+**Semantic** (`dat/semantic_distances_ignore_colname.tsv`). Cosine distances over the embeddings, via `get_semantic_distances.py` and then `complete_semantic_distances.R`.
+
 ## Pipeline
 
 Prep, already run once, outputs tracked in `dat/`:
 
 - `script/uesz_scrape.py` — pulls etymology entries for the loanword list from the Új magyar etimológiai szótár (UESz) letter-PDFs into `dat/entries_raw.csv`, hand-corrected into `dat/entries_hand_edited.csv`
+- `script/get_phon_distances.R` — alignment-based phonological distances; writes `dat/word_distances.tsv.gz`. See *Provenance of the distance matrices* below
 - `script/get_semantic_distances.py` — pairwise cosine distances between loanwords from word embeddings; writes `dat/semantic_distances.csv`
 - `script/complete_semantic_distances.R` — reshapes those into the long, symmetric form KRR needs; writes `dat/semantic_distances_ignore_colname.tsv`
 
@@ -90,6 +107,7 @@ Main pipeline, run in order:
 ```
 script/
   uesz_scrape.py                 Scrapes UESz etymology entries (prep)
+  get_phon_distances.R           Phonological distances via janet (prep)
   get_semantic_distances.py      Pairwise semantic distances from embeddings (prep)
   complete_semantic_distances.R  Reshapes semantic distances for KRR (prep)
   dat_setup.R                    Builds the modelling table
@@ -102,6 +120,7 @@ dat/
   entries_hand_edited.csv        Hand-corrected UESz etymology entries
   entries_raw.csv                Unedited uesz_scrape.py output
   word_distances.tsv.gz          Pairwise phonological distances (IPA-transcribed)
+  siptar_torkenczy_toth_racz_hungarian.tsv  Binary phonological feature matrix, input to janet
   semantic_distances.csv         Pairwise semantic distances (raw)
   semantic_distances_ignore_colname.tsv  Semantic distances, long format for KRR
   real_words.tsv                 Modelling table, output of dat_setup.R
@@ -184,6 +203,8 @@ The file also carries etymology columns from an earlier run. `dat_setup.R` drops
 ### `dat/word_distances.tsv.gz` and `dat/semantic_distances_ignore_colname.tsv`
 
 Long-format pairwise distance tables, columns `word1`, `word2`, `phon_dist`. Both are symmetric and include the zero diagonal, which is what `krr` expects. `word_distances.tsv.gz` is keyed on `transcribed`, the semantic table on `stem`. The `phon_dist` column name in the semantic file is a misnomer retained for compatibility with `krr`, hence the file name.
+
+`word_distances.tsv.gz` covers 213 words (162 loanwords plus 51 unreported nonwords); the semantic table covers the loanwords only. See *Provenance of the distance matrices* above.
 
 ## Licence
 
